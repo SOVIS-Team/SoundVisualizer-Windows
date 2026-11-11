@@ -85,6 +85,46 @@ public class EasySettingsSourceTests
     }
 
     [Fact]
+    public void 보이게_되면_선택_상태는_그_자리에서_맞추고_그림과_움직임만_배치_뒤로_미룬다()
+    {
+        // 예전에는 모두 배치 뒤(Loaded)로 미뤘다. Loaded 는 그리기보다 늦어, 자세한 설정에서 모양이나 크기를 바꾸고 넘어오면
+        // 한 프레임 동안 이전 선택이 보였다.
+        string code = Source("Ui", "EasySettingsView.xaml.cs");
+        Assert.Contains("IsVisibleChanged += (s, e) => OnVisibleChanged();", code);
+
+        string shown = AppSource.MethodBody(code, "OnVisibleChanged");
+        int immediate = shown.IndexOf("ReloadSelection();", StringComparison.Ordinal);
+        int deferred = shown.IndexOf("Dispatcher.InvokeAsync(", StringComparison.Ordinal);
+        Assert.True(immediate >= 0 && deferred > immediate, "선택 상태는 미루기 전에 그 자리에서 맞춥니다.");
+
+        // 배치가 있어야 하는 일만 미룬다. 카드의 그림은 서식이 붙은 뒤에야 찾을 수 있다.
+        string later = shown[deferred..];
+        Assert.Contains("ShowPreviews();", later);
+        Assert.Contains("PlaySelected();", later);
+        Assert.Contains("DispatcherPriority.Loaded", later);
+        Assert.DoesNotContain("Reload", later);
+
+        // 그 자리에서 하는 쪽은 서식이 붙기 전에 불려도 되어야 한다. 서식 안쪽(그림)을 찾지 않고, 화면 읽어주기 알림도 보내지 않는다.
+        string selection = AppSource.MethodBody(code, "ReloadSelection");
+        Assert.Contains("ModeCards.SelectedIndex = mode;", selection);
+        Assert.Contains("SizeChips.SelectedIndex = (int)s;", selection);
+        Assert.Contains("ChkAmbient.IsChecked = AppSettings.ShowAmbient;", selection);
+        Assert.DoesNotContain("PreviewAt(", selection);
+        Assert.DoesNotContain("FindName(", selection);
+        Assert.DoesNotContain("RaiseAutomationEvent", selection);
+        Assert.DoesNotContain("RaiseAutomationEvent", AppSource.MethodBody(code, "ShowCustomNote"));
+        // 그림을 그리는 쪽은 서식이 아직 없는 카드를 건너뛴다.
+        Assert.Contains("if (ModeCards.Items[index] is not ListBoxItem item || item.Template == null) return null;", code);
+        Assert.Contains("PreviewAt(i)?.Show(", AppSource.MethodBody(code, "ShowPreviews"));
+
+        // 런처가 부르는 Reload 는 전처럼 선택과 그림을 모두 맞춘다.
+        string reload = AppSource.MethodBody(code, "Reload");
+        Assert.Contains("ReloadSelection();", reload);
+        Assert.Contains("ShowPreviews();", reload);
+        Assert.Contains("AnnounceCustomNote();", reload);
+    }
+
+    [Fact]
     public void 체크_표시는_오른쪽에서_왼쪽으로_쓰는_언어에서도_뒤집지_않는다()
     {
         // 뒤집으면 아래로 꺾인 화살표처럼 보였다(아랍어 화면에서 확인).

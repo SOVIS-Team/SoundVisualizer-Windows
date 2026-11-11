@@ -38,18 +38,27 @@ namespace SoundVisualizer.Ui
         public EasySettingsView()
         {
             InitializeComponent();
-            // 설정 탭에 들어오거나 자세한 설정에서 넘어와 보이게 되면, 그동안 바뀐 값(오버레이 편집, 자세한 설정)을 다시 읽고 고른 카드를 움직인다.
-            // 배치가 끝난 뒤에 한다. 그 전에는 카드의 서식이 아직 붙지 않아 그림(ModePreview)을 찾지 못한다.
-            IsVisibleChanged += (s, e) =>
+            IsVisibleChanged += (s, e) => OnVisibleChanged();
+        }
+
+        /// <summary>
+        /// 설정 탭에 들어오거나 자세한 설정에서 넘어와 보이게 됐다. 그동안 바뀐 값(오버레이 편집, 자세한 설정)을 다시 읽고 고른 카드를 움직인다.
+        ///
+        /// 선택 상태(모양·크기 칸, 소리 종류 줄)는 그 자리에서 맞춘다. 예전에는 모두 배치 뒤(Loaded)로 미뤘는데, Loaded 는 그리기보다 늦어
+        /// 자세한 설정에서 값을 바꾸고 넘어오면 한 프레임 동안 이전 선택이 보였다. 배치 뒤로 미루는 것은 배치가 있어야 하는 일뿐이다.
+        /// 카드의 그림(ModePreview)은 서식이 붙은 뒤에야 찾을 수 있고, 화면 읽어주기 알림은 요소가 놓인 뒤에 보낸다.
+        /// </summary>
+        private void OnVisibleChanged()
+        {
+            if (!IsVisible) return;
+            ReloadSelection();
+            Dispatcher.InvokeAsync(() =>
             {
                 if (!IsVisible) return;
-                Dispatcher.InvokeAsync(() =>
-                {
-                    if (!IsVisible) return;
-                    Reload();
-                    PlaySelected();
-                }, DispatcherPriority.Loaded);
-            };
+                ShowPreviews();
+                AnnounceCustomNote();
+                PlaySelected();
+            }, DispatcherPriority.Loaded);
         }
 
         /// <summary>쉬운 설정에서 값을 바꿨다. 런처가 자세한 설정의 칸과 다른 탭을 맞춘다.</summary>
@@ -71,6 +80,18 @@ namespace SoundVisualizer.Ui
         /// </summary>
         public void Reload()
         {
+            ReloadSelection();
+            ShowPreviews();
+            AnnounceCustomNote();
+        }
+
+        /// <summary>
+        /// 선택 상태만 맞춘다: 고른 모양 카드와 크기 칸, 단계와 다른 크기라는 안내, 소리 종류 줄의 스위치와 색, 화면 읽어주기 이름.
+        /// 이 화면의 XAML 에 이름 붙여 둔 요소의 속성만 바꾸고 카드의 서식 안쪽(그림)은 찾지 않으므로, 서식이 붙기 전(보이게 된 바로 그때)에
+        /// 불러도 된다.
+        /// </summary>
+        private void ReloadSelection()
+        {
             _loading = true;
             try
             {
@@ -90,23 +111,30 @@ namespace SoundVisualizer.Ui
                 ChkSpeech.IsChecked = AppSettings.ShowSpeech;
                 ChkAmbient.IsChecked = AppSettings.ShowAmbient;
 
-                Color ambient = ParseColor(AppSettings.ColorAmbient);
-                Color speech = ParseColor(AppSettings.ColorSpeech);
-                Color danger = ParseColor(AppSettings.ColorDanger);
-                ChkDanger.Background = Frozen(danger);
-                ChkSpeech.Background = Frozen(speech);
-                ChkAmbient.Background = Frozen(ambient);
-
-                for (int i = 0; i < ModeCards.Items.Count; i++)
-                {
-                    PreviewAt(i)?.Show(ModeSettings(i), ambient, speech, danger);
-                }
+                ChkDanger.Background = Frozen(ParseColor(AppSettings.ColorDanger));
+                ChkSpeech.Background = Frozen(ParseColor(AppSettings.ColorSpeech));
+                ChkAmbient.Background = Frozen(ParseColor(AppSettings.ColorAmbient));
 
                 ApplyCodeTexts();
             }
             finally
             {
                 _loading = false;
+            }
+        }
+
+        /// <summary>
+        /// 모양 카드의 그림을 지금 설정과 색으로 다시 그린다. 서식이 아직 붙지 않은 카드는 건너뛴다(<see cref="PreviewAt"/> 이 null).
+        /// 그런 카드는 이 화면이 보이게 된 뒤 배치가 끝나면 그린다(<see cref="OnVisibleChanged"/>).
+        /// </summary>
+        private void ShowPreviews()
+        {
+            Color ambient = ParseColor(AppSettings.ColorAmbient);
+            Color speech = ParseColor(AppSettings.ColorSpeech);
+            Color danger = ParseColor(AppSettings.ColorDanger);
+            for (int i = 0; i < ModeCards.Items.Count; i++)
+            {
+                PreviewAt(i)?.Show(ModeSettings(i), ambient, speech, danger);
             }
         }
 
@@ -221,11 +249,20 @@ namespace SoundVisualizer.Ui
             PlaySelected();
         }
 
-        /// <summary>단계와 다른 크기면 한 줄 안내를 보이고 '자세한 설정' 칸을 고른 칸처럼 보인다. 새로 나타날 때만 화면 읽어주기가 읽는다.</summary>
+        /// <summary>단계와 다른 크기면 한 줄 안내를 보이고 '자세한 설정' 칸을 고른 칸처럼 보인다.</summary>
         private void ShowCustomNote(bool custom)
         {
             BtnSizeDetailed.IsCurrent = custom;
             TxtSizeCustom.Visibility = custom ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// 단계와 다른 크기라는 안내가 새로 나타났으면 화면 읽어주기가 읽게 한다(이미 보이던 안내는 다시 읽지 않는다).
+        /// 보이게 된 바로 그때가 아니라 배치 뒤에 부른다(<see cref="OnVisibleChanged"/>).
+        /// </summary>
+        private void AnnounceCustomNote()
+        {
+            bool custom = TxtSizeCustom.Visibility == Visibility.Visible;
             if (custom && !_customShown && IsVisible && AutomationPeer.ListenerExists(AutomationEvents.LiveRegionChanged))
             {
                 UIElementAutomationPeer.CreatePeerForElement(TxtSizeCustom)?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
