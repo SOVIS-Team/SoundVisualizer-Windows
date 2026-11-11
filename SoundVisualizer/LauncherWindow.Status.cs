@@ -153,7 +153,9 @@ namespace SoundVisualizer
             string aiText = notice switch
             {
                 HomeNotice.AiUnavailable => Loc.Get("notice.ai_unavailable"),
-                HomeNotice.AiUnavailableHidden => Loc.Format("notice.ai_unavailable_hidden", Loc.Get("settings.show_ambient")),
+                // 설정 탭에 지금 보이는 화면의 스위치 이름을 인용한다. 쉬운 설정의 줄에는 "환경음 표시"가 아니라 "환경음"만 적혀 있다.
+                HomeNotice.AiUnavailableHidden => Loc.Format("notice.ai_unavailable_hidden",
+                    Loc.Get(RunStatus.AmbientSwitchLabelKey(AppSettings.EasySettings))),
                 _ => "",
             };
             TxtAiNotice.Text = aiText;

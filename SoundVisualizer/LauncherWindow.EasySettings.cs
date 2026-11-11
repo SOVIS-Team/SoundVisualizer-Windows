@@ -47,6 +47,9 @@ namespace SoundVisualizer
                 AppSettings.Save();
             }
             ShowSettingsView();
+            // 홈 안내가 인용하는 스위치 이름은 화면마다 다르다(RunStatus.AmbientSwitchLabelKey). 안내가 떠 있으면 새 화면의 이름으로 바꾼다.
+            // 안내의 종류는 그대로라 화면 읽어주기가 다시 읽지는 않는다.
+            UpdateNotices();
         }
 
         /// <summary>쉬운 설정에서 값을 바꿨다(이미 AppSettings 에 쓰고 저장을 예약했다). 자세한 설정의 칸과 소리 탭, 홈 안내를 맞춘다.</summary>
