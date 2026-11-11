@@ -29,7 +29,7 @@ namespace SoundVisualizer.Ai
     /// - <see cref="Dispose"/> 가 1초 안에 추론을 기다리지 못하면 Android 는 세션을 버리지만(누수), 여기서는 그 추론이 끝나면서 닫는다.
     ///   Silero 스레드도 같은 1초 안에서 끝나기를 기다린다(Android 는 기다리지 않는다). 못 기다리면 그 스레드가 끝나며 세션을 닫는다.
     /// - 미리보기 시각은 <see cref="Stopwatch"/> 의 단조 나노초로 잰다(Android 의 elapsedRealtimeNanos). 틱의 밀리초 시계(15.6ms 단위)로는
-    ///   250·275ms 창이 한 프레임씩 흔들린다.
+    ///   250·350ms 창이 한 프레임씩 흔들린다.
     /// </summary>
     public sealed class RealtimeAiPipeline : IDisposable
     {
@@ -51,8 +51,14 @@ namespace SoundVisualizer.Ai
         /// <summary>정규 추론이 소리를 가져간 때부터 이 시간 안에(다음 틱 무렵까지) Silero 가 확인해야 미리보기를 받아들인다.</summary>
         internal const long SpeechPreviewAcceptNs = 250_000_000L;
 
-        /// <summary>정규 추론이 소리를 가져간 때부터 이 시간이 지나면 미리보기가 사라진다. 다음 정규 결과가 오면 그 전에라도 사라진다.</summary>
-        internal const long SpeechPreviewExpiryNs = 275_000_000L;
+        /// <summary>
+        /// 정규 추론이 소리를 가져간 때부터 이 시간이 지나면 미리보기가 사라진다. 다음 정규 결과가 오면 그 전에라도 사라진다.
+        /// Android 는 275ms 다(정확한 250ms 주기 + 추론 시간). PC 의 틱은 15.6ms 단위 시계와 대기로 재서 실제 주기가 255~270ms 이고,
+        /// 275ms 로는 다음 정규 결과가 오기 전에 미리보기가 먼저 사라져 사람 소리 → 환경음 → 사람 소리로 깜빡인다(이 PC 에서 틱의 7~9%).
+        /// 그래서 주기 250ms 에 시계 오차 두 번(31ms)과 느린 추론·바쁜 CPU 의 여유를 더해 350ms 로 둔다. 다음 정규 결과·위협음·사용자 지정은
+        /// 부모 검사로 여전히 바로 이기므로, 달라지는 것은 다음 틱이 무음으로 건너뛰어질 때 미리보기가 75ms 더 남는 것뿐이다.
+        /// </summary>
+        internal const long SpeechPreviewExpiryNs = 350_000_000L;
 
         private const string Tag = nameof(RealtimeAiPipeline);
         private const long FailureLogIntervalMs = 2000;
@@ -446,7 +452,7 @@ namespace SoundVisualizer.Ai
         private void InferLocked()
         {
             Interlocked.Increment(ref _inferenceExecutions);
-            // 미리보기 창(250·275ms)은 정규 추론이 소리를 가져가기 직전부터 잰다(Android 의 snapshotBootNs).
+            // 미리보기 창(받아들임 250ms·만료 350ms)은 정규 추론이 소리를 가져가기 직전부터 잰다(Android 의 snapshotBootNs).
             long snapshotNs = _speechWorker is null ? 0L : _nanoClock();
             long started = Stopwatch.GetTimestamp();
             _buffer.CopyTailRightPadded(_captureScratch);
