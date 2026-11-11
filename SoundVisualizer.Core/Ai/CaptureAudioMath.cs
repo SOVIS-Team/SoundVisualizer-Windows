@@ -224,6 +224,85 @@ namespace SoundVisualizer.Ai
             }
         }
 
+        /// <summary>
+        /// 말소리 미리보기(Silero)의 스트림 리샘플(Android 의 resampleStreamBlock, #422). 16kHz 출력 샘플
+        /// [<paramref name="outputStart"/>, <paramref name="outputStart"/> + <paramref name="destination"/>.Length) 를 만든다.
+        /// <paramref name="source"/> 는 캡처 프레임 <paramref name="sourceFirst"/> 부터의 모노이고 <see cref="StreamSourceRange"/> 의 범위를
+        /// 모두 담아야 한다(0 보다 앞의 프레임은 0). 정규 경로(<see cref="ResampleMonoFloatTo16kCustom"/>)와 같은 계수·같은 곱셈과 덧셈 순서라
+        /// 같은 소리를 0 번째 출력부터 차례로 넣으면 정규 경로와 비트까지 같다. 정규 YAMNet 경로는 바꾸지 않는다.
+        /// 위상은 창이 아니라 스트림 처음부터의 위치로 고른다. PC 레이트(88.2~192kHz)는 정규 경로처럼 늘린 탭을 쓴다.
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">16kHz 보다 낮은 레이트(AI 가 받지 않는다).</exception>
+        internal static void ResampleStreamBlock(ReadOnlySpan<float> source, long sourceFirst, long outputStart, int sourceSampleRate, Span<float> destination)
+        {
+            if (sourceSampleRate == TargetSampleRate)
+            {
+                for (int i = 0; i < destination.Length; i++)
+                {
+                    destination[i] = source[(int)(outputStart + i - sourceFirst)];
+                }
+                return;
+            }
+            if (sourceSampleRate < TargetSampleRate)
+                throw new ArgumentOutOfRangeException(nameof(sourceSampleRate), sourceSampleRate, "stream resampling needs a rate of at least 16 kHz");
+
+            FirTable table = FirTableFor(sourceSampleRate);
+            int taps = table.Taps;
+            int halfTaps = taps / 2;
+            float[] coefficients = table.Coefficients;
+            for (int i = 0; i < destination.Length; i++)
+            {
+                long positionNumerator = (outputStart + i) * sourceSampleRate;
+                long center = positionNumerator / TargetSampleRate;
+                int phaseStart = PhaseIndex(positionNumerator % TargetSampleRate, table.PhaseCount) * taps;
+                int @base = (int)(center - sourceFirst) - halfTaps + 1;
+                double sum = 0.0;
+                for (int tap = 0; tap < taps; tap++)
+                {
+                    sum += (double)coefficients[phaseStart + tap] * source[@base + tap];
+                }
+                destination[i] = (float)sum;
+            }
+        }
+
+        /// <summary>
+        /// 16kHz 출력 [<paramref name="outputStart"/>, <paramref name="outputStart"/> + <paramref name="count"/>) 을 FIR 로 만드는 데 드는
+        /// 캡처 프레임 범위 [First, End). 출력 샘플마다 중심 c 에서 c − (탭/2 − 1) 부터 c + 탭/2 까지 쓴다(44.1·48kHz 는 47 과 48 로 Android 와 같다).
+        /// 16kHz 는 같은 번호의 프레임 하나다. First 는 음수일 수 있다(스트림 처음 앞은 0 으로 본다).
+        /// </summary>
+        internal static (long First, long End) StreamSourceRange(long outputStart, int count, int sourceSampleRate)
+        {
+            long first = outputStart * sourceSampleRate / TargetSampleRate - StreamLeftContext(sourceSampleRate);
+            long end = (outputStart + count - 1) * sourceSampleRate / TargetSampleRate + StreamRightContext(sourceSampleRate) + 1;
+            return (first, end);
+        }
+
+        /// <summary><see cref="StreamSourceRange"/> 가 어느 위치에서든 넘지 않는 길이. 작업 버퍼를 한 번만 잡는 데 쓴다.</summary>
+        internal static int StreamSourceCapacity(int count, int sourceSampleRate)
+        {
+            long span = ((long)(count - 1) * sourceSampleRate + TargetSampleRate - 1) / TargetSampleRate;
+            return (int)span + StreamLeftContext(sourceSampleRate) + StreamRightContext(sourceSampleRate) + 1;
+        }
+
+        /// <summary>
+        /// 캡처 프레임 <paramref name="frames"/> 개가 들어왔을 때 밀린 것을 버리고 다시 시작할 덩어리의 시작(16kHz 샘플). 오른쪽 탭까지 다 받은
+        /// 마지막 덩어리의 바로 앞 덩어리다(Android SileroStreamWorker 의 newest 와 같은 식, 오른쪽 탭 수만 레이트를 따른다).
+        /// </summary>
+        internal static long NewestStreamBlockStart(long frames, int blockSize, int sourceSampleRate)
+        {
+            long usable = Math.Max(0L, frames - StreamRightContext(sourceSampleRate));
+            long blocks = usable * TargetSampleRate / sourceSampleRate / blockSize;
+            return Math.Max(0L, blocks - 1) * blockSize;
+        }
+
+        /// <summary>출력 샘플 하나가 중심보다 앞에서 쓰는 프레임 수.</summary>
+        private static int StreamLeftContext(int sourceSampleRate) =>
+            sourceSampleRate > TargetSampleRate ? FirTapsFor(sourceSampleRate) / 2 - 1 : 0;
+
+        /// <summary>출력 샘플 하나가 중심보다 뒤에서 쓰는 프레임 수. 이만큼 더 들어와야 그 샘플을 만들 수 있다.</summary>
+        private static int StreamRightContext(int sourceSampleRate) =>
+            sourceSampleRate > TargetSampleRate ? FirTapsFor(sourceSampleRate) / 2 : 0;
+
         /// <summary>16kHz 보다 낮은 레이트(AI 는 받지 않는다)에서 예전 보간을 그대로 둔다.</summary>
         private static void LinearResample(ReadOnlySpan<float> source, int sourceSampleRate, Span<float> destination)
         {

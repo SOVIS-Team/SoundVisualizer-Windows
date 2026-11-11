@@ -48,6 +48,10 @@
     <None Update="AIModel\yamnet_class_map.csv">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <!-- 말소리 미리보기의 Silero VAD(MIT, 고지는 THIRD_PARTY.md). 다른 모델처럼 실행 파일 옆 AIModel 에 둔다(단일 파일 배포에서도 따로 나간다). -->
+    <None Update="AIModel\silero_vad.onnx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

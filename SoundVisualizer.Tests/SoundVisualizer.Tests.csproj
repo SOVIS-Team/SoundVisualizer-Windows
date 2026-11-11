@@ -28,6 +28,12 @@
     <None Include="..\SoundVisualizer\AIModel\yamnet.onnx" Link="Models\yamnet.onnx" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\SoundVisualizer\AIModel\yamnet.data" Link="Models\yamnet.data" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\SoundVisualizer\AIModel\yamnet_class_map.csv" Link="Models\yamnet_class_map.csv" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\SoundVisualizer\AIModel\silero_vad.onnx" Link="Models\silero_vad.onnx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- 말소리 미리보기 시험에 쓰는 실제 말소리. 튜토리얼 소리(퍼블릭 도메인, 출처는 THIRD_PARTY.md)를 그대로 쓴다. -->
+  <ItemGroup>
+    <None Include="..\SoundVisualizer\Tutorial\Sounds\tutorial_talk.wav" Link="Sounds\tutorial_talk.wav" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
