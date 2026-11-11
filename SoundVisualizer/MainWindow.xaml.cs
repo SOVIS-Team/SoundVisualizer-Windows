@@ -444,6 +444,7 @@ namespace SoundVisualizer
             _engine.CircleDepths.CopyTo(_renderContext.CircleDepths);
             _renderContext.TotalVolume = _engine.TotalTarget;
             _renderContext.AnimationTime = _engine.AnimationTime;
+            _renderContext.CircleRadius = AppSettings.CircleRadius;
 
             // 선택된 렌더러(Wave 또는 Pad)에게 그리기 위임
             int modeIndex = (AppSettings.VisualMode >= 0 && AppSettings.VisualMode < _visualizers.Length) ? AppSettings.VisualMode : 0;

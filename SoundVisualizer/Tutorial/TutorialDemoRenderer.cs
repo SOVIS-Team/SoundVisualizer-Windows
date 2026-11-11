@@ -74,6 +74,7 @@ namespace SoundVisualizer.Tutorial
             engine.CircleDepths.CopyTo(_context.CircleDepths);
             _context.TotalVolume = engine.TotalTarget;
             _context.AnimationTime = engine.AnimationTime;
+            _context.CircleRadius = demo.CircleRadius;
 
             shape.Data = visualizer.GenerateGeometry(_context);
 
