@@ -299,7 +299,7 @@
   "tutorial.types.title": "音の種類を色で区別します",
   "tutorial.types.body": "AI が音を3種類に分類し、それぞれ違う色で描きます。色は「設定」タブの「詳細設定」で変更できます。",
   "tutorial.type.ambient_examples": "音楽・雨音など、その他の音",
-  "tutorial.type.speech_examples": "人の声",
+  "tutorial.type.speech_examples": "話し声",
   "tutorial.type.danger_examples": "銃声・爆発音・サイレン",
   "tutorial.start.title": "オン/オフの方法",
   "tutorial.start.hotkeys": "実行中は、{0} でサウンドモード、{1} で表示モードを切り替え、{2} でオーバーレイ設定を開きます。"

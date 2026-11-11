@@ -299,7 +299,7 @@
   "tutorial.types.title": "Setiap jenis suara punya warnanya sendiri",
   "tutorial.types.body": "AI mengelompokkan suara menjadi tiga jenis dan menggambar setiap jenis dengan warna yang berbeda. Anda dapat mengubah warnanya di tampilan “Detail” pada tab Setelan.",
   "tutorial.type.ambient_examples": "Musik, hujan, dan suara lainnya",
-  "tutorial.type.speech_examples": "Suara manusia",
+  "tutorial.type.speech_examples": "Percakapan",
   "tutorial.type.danger_examples": "Tembakan, ledakan, sirene",
   "tutorial.start.title": "Cara menyalakan dan mematikannya",
   "tutorial.start.hotkeys": "Saat berjalan, tekan {0} untuk mengganti mode suara, {1} untuk mengganti mode visual, dan {2} untuk membuka setelan overlay."

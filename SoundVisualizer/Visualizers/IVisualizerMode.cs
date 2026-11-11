@@ -23,6 +23,9 @@ namespace SoundVisualizer.Visualizers
         public double[] PadThickness { get; set; } = new double[8];
         public double[] CircleDepths { get; set; } = new double[8];
         public float TotalVolume { get; set; }
+        // 원형 모드의 가운데 고리 반지름 설정(10~100). 그리는 쪽이 넘긴다. 시각화가 전역 설정(지금 모드의 값)을 직접 읽으면
+        // 쉬운 설정의 원형 카드처럼 다른 모드를 쓰는 중에 그리는 그림이 원형 모드의 반지름이 아닌 값으로 그려진다.
+        public double CircleRadius { get; set; } = 40.0;
         public double AnimationTime { get; set; }
     }
 }

@@ -83,6 +83,9 @@ namespace SoundVisualizer.Tutorial
         /// <summary>마지막으로 엔진에 흘린 대본 시각(초). 처음에는 멈춰 둘 장면의 시각이다.</summary>
         public double TimeSec { get; private set; }
 
+        /// <summary>이 그림의 설정에 든 원형 고리 반지름(10~100). 그리는 쪽이 원형 시각화에 넘긴다(전역 설정이 아니라 이 그림의 값).</summary>
+        public double CircleRadius => _settings.CircleRadius;
+
         /// <summary>지금 그리는 소리의 종류. 창이 이것으로 색을 고르고 종류 쪽의 범례를 밝힌다.</summary>
         public SoundType Label => TutorialScript.Label(Scene, TimeSec);
 

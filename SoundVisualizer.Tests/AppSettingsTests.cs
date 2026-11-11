@@ -162,6 +162,40 @@ public sealed class AppSettingsTests : IDisposable
     }
 
     [Fact]
+    public void 모드별_설정이_없는_아주_예전_파일은_그때의_값을_네_모드에_옮긴다()
+    {
+        // 모드별 설정이 생기기 전의 판은 값을 하나씩만 저장했다. 옮기지 않으면 판을 올린 사람의 크기·진하기가 기본값으로 돌아간다.
+        File.WriteAllText(_path, """{ "WaveIntensity": 80, "VisualOpacity": 35, "WavePositionSpeed": 60, "WaveSensitivity": 5, "CircleRadius": 70 }""");
+
+        AppSettings.Load();
+
+        Assert.All(new[] { AppSettings.WaveMode, AppSettings.PadMode, AppSettings.CircleMode, AppSettings.OutlineMode }, mode =>
+        {
+            Assert.Equal(80, mode.Intensity);
+            Assert.Equal(35, mode.VisualOpacity);
+            Assert.Equal(60, mode.PositionSpeed);
+            Assert.Equal(5, mode.Sensitivity);
+            Assert.Equal(70, mode.CircleRadius);
+        });
+        // 네 모드는 서로 다른 객체다. 하나를 바꿔도 다른 모드가 따라 바뀌지 않는다.
+        AppSettings.WaveMode.Intensity = 10;
+        Assert.Equal(80, AppSettings.PadMode.Intensity);
+        // 상세 값을 바꿔 쓰던 사람이라 자세한 설정으로 연다.
+        Assert.False(AppSettings.EasySettings);
+    }
+
+    [Fact]
+    public void 모드별_설정이_일부만_있는_파일은_있는_모드를_그대로_읽는다()
+    {
+        File.WriteAllText(_path, """{ "WaveIntensity": 80, "PadMode": { "Intensity": 33 } }""");
+
+        AppSettings.Load();
+
+        Assert.Equal(33, AppSettings.PadMode.Intensity);
+        Assert.Equal(80, AppSettings.WaveMode.Intensity);
+    }
+
+    [Fact]
     public void 깨진_설정_파일은_기본값으로_시작한다()
     {
         File.WriteAllText(_path, "{ not json");

@@ -27,6 +27,8 @@ namespace SoundVisualizer
         public LauncherWindow()
         {
             InitializeComponent();
+            // 탭을 바꾸면 단축키 입력 대기를 그만둔다. 안쪽 목록의 선택 알림도 여기로 올라오므로 탭 줄의 것만 본다.
+            Tabs.SelectionChanged += (s, e) => { if (ReferenceEquals(e.OriginalSource, Tabs)) CancelHotkeyBinding(); };
             _modes = new[]
             {
                 new ModeControls(() => AppSettings.WaveMode, ChkIntensityAsOpacityWave, SldOpacityFixedSizeWave, SldOpacityFixedMaxOpacityWave,
@@ -389,6 +391,20 @@ namespace SoundVisualizer
             StartBinding("Edit");
         }
 
+        /// <summary>
+        /// 단축키 입력 대기를 그만둔다(Esc 와 같다). 대기 중에는 창이 모든 키를 가로채 떼는 순간 단축키로 저장하므로, 단축키 버튼이 보이지
+        /// 않게 될 때(쉬운 설정이나 다른 탭으로 넘어갈 때)에도 그만둬야 한다. 그대로 두면 그 뒤에 누른 Tab 이나 방향키가 먹지 않고
+        /// 단축키로 저장된다.
+        /// </summary>
+        private void CancelHotkeyBinding()
+        {
+            if (_bindingTarget == null) return;
+            _bindingTarget = null;
+            _currentlyHeldKeys.Clear();
+            _maxKeysInCurrentBinding.Clear();
+            LoadSettingsToUI();
+        }
+
         private void StartBinding(string target)
         {
             _bindingTarget = target;
@@ -406,10 +422,7 @@ namespace SoundVisualizer
             {
                 if (e.Key == System.Windows.Input.Key.Escape)
                 {
-                    _bindingTarget = null;
-                    _currentlyHeldKeys.Clear();
-                    _maxKeysInCurrentBinding.Clear();
-                    LoadSettingsToUI();
+                    CancelHotkeyBinding();
                     e.Handled = true;
                     return;
                 }

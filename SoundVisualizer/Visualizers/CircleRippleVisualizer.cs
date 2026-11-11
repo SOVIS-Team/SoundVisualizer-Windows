@@ -23,9 +23,9 @@ namespace SoundVisualizer.Visualizers
             double cy = h / 2.0;
             
             // 화면 크기에 비례하며 설정값을 반영하는 중앙의 빈 공간
-            // AppSettings.CircleRadius 범위: 10 ~ 100
+            // context.CircleRadius 범위: 10 ~ 100 (오버레이는 지금 모드의 설정을, 미리보기 그림은 그 그림의 설정을 넘긴다)
             // 이를 0.05 ~ 0.40 비율 정도로 매핑
-            double radiusRatio = 0.05 + (AppSettings.CircleRadius - 10.0) / 90.0 * 0.35;
+            double radiusRatio = 0.05 + (context.CircleRadius - 10.0) / 90.0 * 0.35;
             double baseRadius = Math.Min(w, h) * radiusRatio; 
 
             var geometry = new StreamGeometry();

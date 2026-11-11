@@ -565,10 +565,12 @@ namespace SoundVisualizer
             // 설정 탭을 쉬운 설정으로 열지. 예전 설정 파일에는 없어 null 로 읽힌다(그때는 모드 설정을 보고 정한다).
             public bool? EasySettings { get; set; }
 
-            public VisualModeSettings WaveMode { get; set; } = new VisualModeSettings();
-            public VisualModeSettings PadMode { get; set; } = new VisualModeSettings();
-            public VisualModeSettings CircleMode { get; set; } = new VisualModeSettings();
-            public VisualModeSettings OutlineMode { get; set; } = new VisualModeSettings();
+            // 모드별 설정. 초기값을 두지 않는다. 모드별 설정이 없던 아주 예전 파일은 null 로 읽혀야 Load 가 그때의 값(WaveIntensity 등)을
+            // 네 모드로 옮긴다. 초기값이 있으면 늘 '있음'으로 읽혀 옮기지 않고, 판을 올린 사람의 크기·진하기가 기본값으로 돌아간다.
+            public VisualModeSettings? WaveMode { get; set; }
+            public VisualModeSettings? PadMode { get; set; }
+            public VisualModeSettings? CircleMode { get; set; }
+            public VisualModeSettings? OutlineMode { get; set; }
         }
     }
 }

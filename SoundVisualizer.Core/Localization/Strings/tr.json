@@ -299,7 +299,7 @@
   "tutorial.types.title": "Her ses türünün kendi rengi var",
   "tutorial.types.body": "Yapay zeka, sesleri üç türe ayırır ve her türü farklı bir renkte çizer. Renkleri “Ayarlar” sekmesindeki “Ayrıntılı” görünümünden değiştirebilirsiniz.",
   "tutorial.type.ambient_examples": "Müzik, yağmur ve diğer tüm sesler",
-  "tutorial.type.speech_examples": "İnsan sesleri",
+  "tutorial.type.speech_examples": "Konuşma",
   "tutorial.type.danger_examples": "Silah sesi, patlama, siren",
   "tutorial.start.title": "Nasıl açılıp kapatılır",
   "tutorial.start.hotkeys": "Çalışırken ses modunu değiştirmek için {0} tuşuna, görsel modu değiştirmek için {1} tuşuna, yer paylaşımı ayarlarını açmak için {2} tuşuna basın."

@@ -299,7 +299,7 @@
   "tutorial.types.title": "เสียงแต่ละประเภทมีสีของตัวเอง",
   "tutorial.types.body": "AI จะแยกเสียงออกเป็น 3 ประเภท และวาดแต่ละประเภทด้วยสีของตัวเอง คุณเปลี่ยนสีได้ที่ “แบบละเอียด” ในแท็บการตั้งค่า",
   "tutorial.type.ambient_examples": "เพลง เสียงฝน และเสียงอื่นทั้งหมด",
-  "tutorial.type.speech_examples": "เสียงคน",
+  "tutorial.type.speech_examples": "เสียงพูด",
   "tutorial.type.danger_examples": "เสียงปืน เสียงระเบิด เสียงไซเรน",
   "tutorial.start.title": "วิธีเปิดและปิด",
   "tutorial.start.hotkeys": "ขณะทำงานอยู่ กด {0} เพื่อสลับโหมดเสียง กด {1} เพื่อสลับโหมดการแสดงผล และกด {2} เพื่อเปิดการตั้งค่าโอเวอร์เลย์"

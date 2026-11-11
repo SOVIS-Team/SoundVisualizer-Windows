@@ -444,6 +444,7 @@ namespace SoundVisualizer
             _engine.CircleDepths.CopyTo(_renderContext.CircleDepths);
             _renderContext.TotalVolume = _engine.TotalTarget;
             _renderContext.AnimationTime = _engine.AnimationTime;
+            _renderContext.CircleRadius = AppSettings.CircleRadius;
 
             // 선택된 렌더러(Wave 또는 Pad)에게 그리기 위임
             int modeIndex = (AppSettings.VisualMode >= 0 && AppSettings.VisualMode < _visualizers.Length) ? AppSettings.VisualMode : 0;
@@ -623,29 +624,42 @@ namespace SoundVisualizer
             {
                 previous?.Dispose();
                 RealtimeAiPipeline? created = null;
+                bool published = false; // 넣은 뒤에는 이 작업이 닫지 않는다(창 닫기나 다음 형식 변경이 닫는다)
                 try
                 {
                     var classes = _classMap ??= YamnetClassMap.Load(System.IO.Path.Combine(ModelDirectory, "yamnet_class_map.csv"));
                     created = RealtimeAiPipeline.Create(rate, channels, ModelDirectory, classes,
                         mappingOverrides: () => AppSettings.SoundTypes,
                         tickFailed: ex => AppLog.Warn("ai", "AI 추론 한 번이 실패했습니다.", ex));
+                    RealtimeAiPipeline? replaced = null;
+                    bool discard;
                     lock (_aiGate)
                     {
-                        // 만드는 사이 형식이 또 바뀌었거나 창이 닫혔으면 버린다.
-                        if (_isClosed || _aiRequestedRate != rate || _aiRequestedChannels != channels)
+                        // 만드는 사이 형식이 또 바뀌었거나 창이 닫혔으면 버린다. 닫기(Dispose)는 잠금 밖에서 한다. 방금 띄운 말소리 미리보기
+                        // 스레드가 모델을 다 읽기를 최대 1초 기다리는데, 그동안 캡처 스레드(RequestAiPipeline)와 창 닫기가 이 잠금에서 함께
+                        // 멈추면 안 된다.
+                        discard = _isClosed || _aiRequestedRate != rate || _aiRequestedChannels != channels;
+                        if (!discard)
                         {
-                            created.Dispose();
-                            return;
+                            created.Start();
+                            // 형식이 X→Y→X 로 빠르게 바뀌면 같은 형식의 파이프라인이 두 번 만들어진다. 먼저 넣은 것을 꺼내 닫아야
+                            // 스레드와 모델 세션이 남지 않는다.
+                            replaced = Interlocked.Exchange(ref _aiPipeline, created);
+                            published = true;
                         }
-                        created.Start();
-                        Volatile.Write(ref _aiPipeline, created);
                     }
+                    if (discard)
+                    {
+                        created.Dispose();
+                        return;
+                    }
+                    replaced?.Dispose();
                     AppLog.Info("ai", $"AI 를 시작했습니다({rate}Hz, {channels}ch).");
                     NotifyAiAvailability(true);
                 }
                 catch (Exception ex)
                 {
-                    created?.Dispose();
+                    if (!published) created?.Dispose();
                     AppLog.Warn("ai", $"AI 를 시작하지 못해 그래픽만 표시합니다({rate}Hz, {channels}ch).", ex);
                     NotifyAiAvailability(false); // 홈이 "모든 소리가 환경음 색" 이라고 알린다
                 }

@@ -65,7 +65,24 @@ public class RealtimeAiPipelineSpeechPreviewTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void 미리보기는_정규_스냅샷부터_275ms_에_사라지고_정규_결과로_돌아간다()
+    public void 미리보기는_PC_의_실제_틱_주기에서도_다음_정규_결과까지_이어진다()
+    {
+        // PC 의 틱은 15.6ms 단위 시계와 대기로 재서 다음 정규 결과가 스냅샷 뒤 255~280ms 에 온다(바쁜 PC 는 더 늦다). Android 의 275ms 로
+        // 만료하면 그 사이에 미리보기가 먼저 사라져 사람 소리 → 환경음 → 사람 소리로 깜빡였다(v2.1 을 내기 전 검토에서 틱의 7~9%).
+        using var h = new Harness(16000, 1);
+        var regular = h.FirstSpeechCandidate();
+        h.FeedFreshBlocks(3, h.Frames);
+
+        foreach (long ms in new long[] { 255, 266, 275, 281, 300, 330 })
+        {
+            h.Nanos.Set(ms * 1_000_000L);
+            Assert.True(h.Pipeline.LastDisplayClassification()?.SpeechPreview, ms + "ms 에 미리보기가 사라졌다");
+        }
+        Assert.Same(regular, h.Pipeline.LastClassification()); // 그동안에도 정규 결과는 그대로다
+    }
+
+    [Fact]
+    public void 미리보기는_만료_시각에_사라지고_정규_결과로_돌아간다()
     {
         using var h = new Harness(16000, 1);
         var regular = h.FirstSpeechCandidate();

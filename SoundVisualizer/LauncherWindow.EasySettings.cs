@@ -39,6 +39,8 @@ namespace SoundVisualizer
         /// <summary>화면을 바꾸고 저장한다. 화면만 바뀌고 다른 설정은 건드리지 않는다.</summary>
         private void SetSettingsView(bool easy)
         {
+            // 단축키 버튼은 자세한 설정에만 있다. 입력을 기다리는 채로 화면이 바뀌면 다음에 누른 키가 단축키로 저장된다.
+            CancelHotkeyBinding();
             if (AppSettings.EasySettings != easy)
             {
                 AppSettings.EasySettings = easy;

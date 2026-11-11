@@ -67,8 +67,9 @@ namespace SoundVisualizer.Ai
             {
                 IsBackground = true,
                 Name = "SV-SileroPreview",
-                // Android 의 THREAD_PRIORITY_BACKGROUND. 캡처·화면·정규 추론보다 뒤에 선다.
-                Priority = ThreadPriority.BelowNormal,
+                // 우선순위는 낮추지 않는다(Android 는 THREAD_PRIORITY_BACKGROUND). 이 스레드는 링 버퍼 잠금과 깨우기 신호를 캡처 스레드와
+                // 나눠 쓰는데, Windows 는 우선순위가 엄격하고 Monitor 에 우선순위 상속이 없다. 게임이 모든 코어를 채운 동안 낮은 우선순위로
+                // 잠금을 잡은 채 밀려나면 캡처 스레드(소리 내보내기와 화면 크기 계산도 한다)가 함께 멈춘다. 일의 양은 코어의 1% 남짓이다.
             };
             _thread.Start();
         }
