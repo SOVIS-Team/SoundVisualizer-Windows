@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "启动时最小化启动器",
   "settings.auto_minimize.desc": "启动覆盖层时，自动最小化此启动器窗口。",
 
+  "settings.view.easy": "简易设置",
+  "settings.view.detailed": "详细设置",
+
+  "easy.section.shape": "形状",
+  "easy.section.size": "大小",
+  "easy.section.types": "声音类型",
+  "easy.size.small": "小",
+  "easy.size.medium": "中",
+  "easy.size.large": "大",
+  "easy.size.custom": "此大小是在“详细设置”中调整的。在上方选择即可更改。",
+  "easy.name_pair": "{0}，{1}",
+
   "sounds.title": "选择声音类型",
   "sounds.desc": "AI 能识别的声音与相似的声音归为一组，并按各自的默认类型显示。更改一组的类型后，组内声音的颜色会立即随新类型改变。",
   "sounds.sibling_note": "AI 常常会把同一个声音同时识别为多个名称。例如警笛也会被识别为“警报”，而“警报”在另一组中。如果更改后某个声音仍按原来的类型显示，请一并更改相关的组或声音。",

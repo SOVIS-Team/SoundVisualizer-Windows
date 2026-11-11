@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "Minimizar el lanzador al iniciar",
   "settings.auto_minimize.desc": "Minimiza automáticamente esta ventana del lanzador cuando se inicia la superposición.",
 
+  "settings.view.easy": "Sencillo",
+  "settings.view.detailed": "Detallado",
+
+  "easy.section.shape": "Forma",
+  "easy.section.size": "Tamaño",
+  "easy.section.types": "Tipos de sonido",
+  "easy.size.small": "Pequeño",
+  "easy.size.medium": "Mediano",
+  "easy.size.large": "Grande",
+  "easy.size.custom": "Este tamaño se ajustó en “Detallado”. Elige una opción de arriba para cambiarlo.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "Elige los tipos de sonido",
   "sounds.desc": "Los sonidos que reconoce la IA están agrupados con otros parecidos, según el tipo que tienen por defecto. Si cambias el tipo de un grupo, el color de sus sonidos cambia al instante.",
   "sounds.sibling_note": "La IA suele reconocer un mismo sonido con varios nombres a la vez. Por ejemplo, una sirena también se reconoce como “Alarma”, que está en otro grupo. Si después de un cambio un sonido se sigue mostrando con su tipo anterior, cambia también los grupos o sonidos relacionados.",

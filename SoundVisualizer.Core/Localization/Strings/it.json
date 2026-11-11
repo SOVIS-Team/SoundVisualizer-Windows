@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "Riduci a icona il launcher all'avvio",
   "settings.auto_minimize.desc": "Riduce automaticamente a icona questa finestra del launcher all'avvio dell'overlay.",
 
+  "settings.view.easy": "Semplici",
+  "settings.view.detailed": "Dettagliate",
+
+  "easy.section.shape": "Forma",
+  "easy.section.size": "Dimensione",
+  "easy.section.types": "Tipi di suono",
+  "easy.size.small": "Piccola",
+  "easy.size.medium": "Media",
+  "easy.size.large": "Grande",
+  "easy.size.custom": "Questa dimensione è stata impostata in “Dettagliate”. Scegli un'opzione qui sopra per cambiarla.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "Scegli i tipi di suono",
   "sounds.desc": "I suoni che l'IA riconosce sono raggruppati con suoni simili, in base al tipo a cui appartengono per impostazione predefinita. Se cambi il tipo di un gruppo, il colore dei suoi suoni segue subito il nuovo tipo.",
   "sounds.sibling_note": "L'IA spesso riconosce uno stesso suono con più nomi insieme. Una sirena, per esempio, viene riconosciuta anche come “Allarme”, che si trova in un altro gruppo. Se dopo una modifica un suono appare ancora con il tipo precedente, cambia anche i gruppi o i suoni collegati.",

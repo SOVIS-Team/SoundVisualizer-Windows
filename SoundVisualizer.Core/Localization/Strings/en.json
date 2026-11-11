@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "Minimize launcher on start",
   "settings.auto_minimize.desc": "Automatically minimizes this launcher window when the overlay starts.",
 
+  "settings.view.easy": "Simple",
+  "settings.view.detailed": "Detailed",
+
+  "easy.section.shape": "Shape",
+  "easy.section.size": "Size",
+  "easy.section.types": "Sound types",
+  "easy.size.small": "Small",
+  "easy.size.medium": "Medium",
+  "easy.size.large": "Large",
+  "easy.size.custom": "This size was set in “Detailed”. Select one above to change it.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "Choose sound types",
   "sounds.desc": "Sounds the AI recognizes are grouped with similar sounds, under the type each counts as by default. Change a group’s type, and the color of its sounds follows right away.",
   "sounds.sibling_note": "The AI often hears one sound under several names at once. A siren, for example, is also heard as “Alarm”, which is in another group. If a sound still shows its old type after a change, change the related groups or sounds too.",

@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "Launcher beim Start minimieren",
   "settings.auto_minimize.desc": "Minimiert dieses Launcher-Fenster automatisch, wenn das Overlay startet.",
 
+  "settings.view.easy": "Einfach",
+  "settings.view.detailed": "Detailliert",
+
+  "easy.section.shape": "Form",
+  "easy.section.size": "Größe",
+  "easy.section.types": "Geräuscharten",
+  "easy.size.small": "Klein",
+  "easy.size.medium": "Mittel",
+  "easy.size.large": "Groß",
+  "easy.size.custom": "Diese Größe wurde in der Ansicht „Detailliert“ eingestellt. Wählen Sie oben eine Option, um sie zu ändern.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "Geräuscharten wählen",
   "sounds.desc": "Die Geräusche, welche die KI erkennt, sind in Gruppen ähnlicher Geräusche zusammengefasst und nach der Art geordnet, zu der sie standardmäßig zählen. Ändern Sie die Art einer Gruppe, richtet sich die Farbe ihrer Geräusche sofort danach.",
   "sounds.sibling_note": "Die KI erkennt ein Geräusch oft unter mehreren Namen zugleich. Eine Sirene wird zum Beispiel auch als „Alarm“ erkannt, und „Alarm“ gehört zu einer anderen Gruppe. Wird ein Geräusch nach einer Änderung noch in seiner alten Art angezeigt, ändern Sie auch die zugehörigen Gruppen oder Geräusche.",

@@ -14,9 +14,28 @@ namespace SoundVisualizer.Ui
     /// </summary>
     public sealed class ChoiceChipList : ListBox
     {
+        private bool _clearing;
+
+        /// <summary>
+        /// 고른 칸을 코드에서 비운다. 쉬운 설정의 크기 칸이 쓴다: 자세한 설정에서 맞춘 크기는 세 칸 어느 것에도 맞지 않아 아무 칸도 고르지 않는다.
+        /// 사용자가 Ctrl+클릭으로 푸는 것은 지금처럼 막는다.
+        /// </summary>
+        public void ClearSelection()
+        {
+            _clearing = true;
+            try
+            {
+                SelectedIndex = -1;
+            }
+            finally
+            {
+                _clearing = false;
+            }
+        }
+
         protected override void OnSelectionChanged(SelectionChangedEventArgs e)
         {
-            if (SelectedIndex < 0 && e.RemovedItems.Count > 0)
+            if (!_clearing && SelectedIndex < 0 && e.RemovedItems.Count > 0)
             {
                 SelectedItem = e.RemovedItems[0];
                 return;

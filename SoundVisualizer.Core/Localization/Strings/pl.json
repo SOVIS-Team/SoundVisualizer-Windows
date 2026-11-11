@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "Minimalizuj launcher po uruchomieniu",
   "settings.auto_minimize.desc": "Automatycznie minimalizuje okno launchera, gdy uruchamia się nakładka.",
 
+  "settings.view.easy": "Proste",
+  "settings.view.detailed": "Szczegółowe",
+
+  "easy.section.shape": "Kształt",
+  "easy.section.size": "Rozmiar",
+  "easy.section.types": "Rodzaje dźwięków",
+  "easy.size.small": "Mały",
+  "easy.size.medium": "Średni",
+  "easy.size.large": "Duży",
+  "easy.size.custom": "Ten rozmiar ustawiono w widoku „Szczegółowe”. Wybierz opcję powyżej, aby go zmienić.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "Wybierz rodzaje dźwięków",
   "sounds.desc": "Dźwięki rozpoznawane przez AI są zebrane w grupy podobnych dźwięków według rodzaju, do którego domyślnie należą. Gdy zmienisz rodzaj grupy, kolor jej dźwięków od razu dostosuje się do nowego rodzaju.",
   "sounds.sibling_note": "AI często rozpoznaje ten sam dźwięk jednocześnie pod kilkoma nazwami. Syrena na przykład jest rozpoznawana także jako „Alarm”, który jest w innej grupie. Jeśli po zmianie dźwięk nadal jest pokazywany jako poprzedni rodzaj, zmień też powiązane grupy lub dźwięki.",

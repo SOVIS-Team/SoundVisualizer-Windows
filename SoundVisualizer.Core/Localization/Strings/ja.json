@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "開始時にランチャーを最小化",
   "settings.auto_minimize.desc": "オーバーレイの開始時に、このランチャーウィンドウを自動で最小化します。",
 
+  "settings.view.easy": "かんたん設定",
+  "settings.view.detailed": "詳細設定",
+
+  "easy.section.shape": "形",
+  "easy.section.size": "サイズ",
+  "easy.section.types": "音の種類",
+  "easy.size.small": "小さめ",
+  "easy.size.medium": "普通",
+  "easy.size.large": "大きめ",
+  "easy.size.custom": "このサイズは「詳細設定」で調整されています。上で選択すると変わります。",
+  "easy.name_pair": "{0}、{1}",
+
   "sounds.title": "音の種類を選ぶ",
   "sounds.desc": "AI が認識する音を、似た音どうしでグループにまとめ、初期設定の種類ごとに表示します。グループの種類を変えると、そのグループの音の色はすぐに新しい種類に合わせて変わります。",
   "sounds.sibling_note": "AI は一つの音を複数の名前で同時に聞き取ることがよくあります。たとえばサイレンは「警報音」としても聞き取られますが、警報音は別のグループにあります。変更後も前の種類で表示される場合は、関連するグループや音も変更してください。",

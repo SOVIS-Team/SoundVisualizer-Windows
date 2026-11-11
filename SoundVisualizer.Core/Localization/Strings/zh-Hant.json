@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "開始時將啟動器最小化",
   "settings.auto_minimize.desc": "覆疊畫面開始執行時，自動將這個啟動器視窗最小化。",
 
+  "settings.view.easy": "簡易設定",
+  "settings.view.detailed": "詳細設定",
+
+  "easy.section.shape": "形狀",
+  "easy.section.size": "大小",
+  "easy.section.types": "聲音類型",
+  "easy.size.small": "小",
+  "easy.size.medium": "中",
+  "easy.size.large": "大",
+  "easy.size.custom": "這個大小是在「詳細設定」中調整的。在上方選擇即可變更。",
+  "easy.name_pair": "{0}，{1}",
+
   "sounds.title": "選擇聲音類型",
   "sounds.desc": "AI 能辨識的聲音會和相似的聲音歸為同一群組，並依各自的預設類型顯示。變更群組的類型後，其中聲音的顏色會立即跟著新類型改變。",
   "sounds.sibling_note": "AI 常常會把同一個聲音同時辨識為多個名稱。例如警笛也會被辨識為「警報」，而「警報」在另一個群組。如果變更後某個聲音仍以原本的類型顯示，請一併變更相關的群組或聲音。",

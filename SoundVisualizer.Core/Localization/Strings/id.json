@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "Minimalkan peluncur saat mulai",
   "settings.auto_minimize.desc": "Otomatis meminimalkan jendela peluncur ini saat overlay dimulai.",
 
+  "settings.view.easy": "Sederhana",
+  "settings.view.detailed": "Detail",
+
+  "easy.section.shape": "Bentuk",
+  "easy.section.size": "Ukuran",
+  "easy.section.types": "Jenis suara",
+  "easy.size.small": "Kecil",
+  "easy.size.medium": "Sedang",
+  "easy.size.large": "Besar",
+  "easy.size.custom": "Ukuran ini diatur di tampilan “Detail”. Pilih salah satu di atas untuk mengubahnya.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "Pilih jenis suara",
   "sounds.desc": "Suara yang dikenali AI dikelompokkan dengan suara yang mirip, sesuai jenis default masing-masing. Jika Anda mengubah jenis suatu grup, warna suara di dalamnya langsung mengikuti jenis yang baru.",
   "sounds.sibling_note": "AI sering mengenali satu suara dengan beberapa nama sekaligus. Misalnya, sirene juga dikenali sebagai “Alarm”, yang ada di grup lain. Jika suatu suara masih tampil dengan jenis lamanya setelah diubah, ubah juga grup atau suara yang terkait.",

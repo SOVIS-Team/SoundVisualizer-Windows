@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "실행 시 런처 최소화",
   "settings.auto_minimize.desc": "오버레이 실행 시 이 런처 창을 자동으로 최소화합니다.",
 
+  "settings.view.easy": "쉬운 설정",
+  "settings.view.detailed": "자세한 설정",
+
+  "easy.section.shape": "모양",
+  "easy.section.size": "크기",
+  "easy.section.types": "소리 종류",
+  "easy.size.small": "작게",
+  "easy.size.medium": "보통",
+  "easy.size.large": "크게",
+  "easy.size.custom": "‘자세한 설정’에서 맞춘 크기입니다. 위에서 선택하면 바뀝니다.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "소리 종류 선택",
   "sounds.desc": "AI가 알아듣는 소리를 비슷한 것끼리 묶어, 기본 종류별로 보여 줍니다. 묶음의 종류를 바꾸면 그 소리들의 색이 바로 새 종류를 따릅니다.",
   "sounds.sibling_note": "AI는 한 소리를 여러 이름으로 함께 들을 때가 많습니다. 예를 들어 사이렌은 ‘경보음’으로도 들리는데, 경보음은 다른 묶음에 있습니다. 바꾼 뒤에도 예전 종류로 보이면 관련된 묶음이나 소리도 함께 바꾸세요.",

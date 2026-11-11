@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "Thu nhỏ trình khởi chạy khi bắt đầu",
   "settings.auto_minimize.desc": "Tự động thu nhỏ cửa sổ trình khởi chạy này khi lớp phủ bắt đầu chạy.",
 
+  "settings.view.easy": "Đơn giản",
+  "settings.view.detailed": "Chi tiết",
+
+  "easy.section.shape": "Hình dạng",
+  "easy.section.size": "Kích thước",
+  "easy.section.types": "Loại âm thanh",
+  "easy.size.small": "Nhỏ",
+  "easy.size.medium": "Vừa",
+  "easy.size.large": "Lớn",
+  "easy.size.custom": "Kích thước này được đặt trong “Chi tiết”. Chọn một mục ở trên để thay đổi.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "Chọn loại âm thanh",
   "sounds.desc": "Các âm thanh AI nhận diện được nằm chung nhóm với những âm thanh tương tự, xếp theo loại mặc định của từng âm thanh. Khi bạn đổi loại của một nhóm, màu của các âm thanh trong nhóm sẽ đổi theo loại mới ngay lập tức.",
   "sounds.sibling_note": "AI thường nhận ra một âm thanh bằng nhiều tên cùng lúc. Ví dụ, còi hụ cũng được nhận ra là “Báo động”, vốn nằm ở nhóm khác. Nếu sau khi đổi mà một âm thanh vẫn hiện theo loại cũ, hãy đổi cả các nhóm hoặc âm thanh liên quan.",

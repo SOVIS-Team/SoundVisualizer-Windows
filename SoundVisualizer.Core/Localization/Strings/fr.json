@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "Réduire le lanceur au démarrage",
   "settings.auto_minimize.desc": "Réduit automatiquement la fenêtre du lanceur au démarrage de l'overlay.",
 
+  "settings.view.easy": "Simple",
+  "settings.view.detailed": "Détaillé",
+
+  "easy.section.shape": "Forme",
+  "easy.section.size": "Taille",
+  "easy.section.types": "Types de sons",
+  "easy.size.small": "Petite",
+  "easy.size.medium": "Moyenne",
+  "easy.size.large": "Grande",
+  "easy.size.custom": "Cette taille a été réglée dans la vue « Détaillé ». Choisissez une option ci-dessus pour la modifier.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "Choisir les types de sons",
   "sounds.desc": "Les sons que l'IA reconnaît sont regroupés avec des sons proches, selon le type auquel chacun appartient par défaut. Si vous changez le type d'un groupe, la couleur de ses sons suit aussitôt le nouveau type.",
   "sounds.sibling_note": "L'IA reconnaît souvent un même son sous plusieurs noms à la fois. Une sirène, par exemple, est aussi reconnue comme « Alarme », qui se trouve dans un autre groupe. Si un son s'affiche encore avec son ancien type après une modification, modifiez aussi les groupes ou les sons liés.",

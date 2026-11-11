@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "Başlatınca başlatıcıyı küçült",
   "settings.auto_minimize.desc": "Yer paylaşımı başladığında bu başlatıcı penceresini otomatik olarak simge durumuna küçültür.",
 
+  "settings.view.easy": "Basit",
+  "settings.view.detailed": "Ayrıntılı",
+
+  "easy.section.shape": "Şekil",
+  "easy.section.size": "Boyut",
+  "easy.section.types": "Ses türleri",
+  "easy.size.small": "Küçük",
+  "easy.size.medium": "Orta",
+  "easy.size.large": "Büyük",
+  "easy.size.custom": "Bu boyut “Ayrıntılı” görünümünde ayarlandı. Değiştirmek için yukarıdan bir seçenek seçin.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "Ses türlerini seçin",
   "sounds.desc": "Yapay zekanın tanıdığı sesler benzer seslerle gruplanır ve varsayılan olarak sayıldıkları türe göre gösterilir. Bir grubun türünü değiştirdiğinizde o gruptaki seslerin rengi hemen yeni türe göre değişir.",
   "sounds.sibling_note": "Yapay zeka tek bir sesi çoğu zaman aynı anda birkaç adla tanır. Örneğin siren “Alarm” olarak da tanınır ve “Alarm” başka bir gruptadır. Bir ses değişiklikten sonra hâlâ eski türüyle görünüyorsa ilgili grupları veya sesleri de değiştirin.",

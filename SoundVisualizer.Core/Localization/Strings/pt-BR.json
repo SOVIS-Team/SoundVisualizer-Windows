@@ -95,6 +95,18 @@
   "settings.auto_minimize.title": "Minimizar o inicializador ao iniciar",
   "settings.auto_minimize.desc": "Minimiza automaticamente esta janela do inicializador quando a sobreposição é iniciada.",
 
+  "settings.view.easy": "Simples",
+  "settings.view.detailed": "Detalhado",
+
+  "easy.section.shape": "Forma",
+  "easy.section.size": "Tamanho",
+  "easy.section.types": "Tipos de som",
+  "easy.size.small": "Pequeno",
+  "easy.size.medium": "Médio",
+  "easy.size.large": "Grande",
+  "easy.size.custom": "Este tamanho foi ajustado em “Detalhado”. Escolha uma opção acima para mudar.",
+  "easy.name_pair": "{0}, {1}",
+
   "sounds.title": "Escolha os tipos de som",
   "sounds.desc": "Os sons que a IA reconhece ficam agrupados com sons parecidos, de acordo com o tipo padrão de cada um. Se você mudar o tipo de um grupo, a cor dos sons dele passa a seguir o novo tipo na hora.",
   "sounds.sibling_note": "A IA muitas vezes reconhece um mesmo som com vários nomes ao mesmo tempo. Uma sirene, por exemplo, também é reconhecida como “Alarme”, que fica em outro grupo. Se, depois de uma mudança, um som continuar aparecendo com o tipo antigo, mude também os grupos ou sons relacionados.",
