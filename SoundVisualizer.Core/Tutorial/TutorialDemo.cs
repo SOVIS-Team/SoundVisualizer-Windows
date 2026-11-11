@@ -30,19 +30,47 @@ namespace SoundVisualizer.Tutorial
         /// <summary>미리 돌릴 때의 프레임 간격(60fps).</summary>
         private const double PrerollFps = 60;
 
+        /// <summary>
+        /// 쉬운 설정의 모양 카드(#408)가 그리는 화면(DIP). 카드의 그림은 튜토리얼 그림보다 훨씬 작아, 기준 화면을 그대로 줄이면 패드의 막대와
+        /// 외곽선이 1px 아래로 가늘어진다. 그래서 더 작은 화면(16:9)을 줄인 것으로 보아 띠와 선을 굵게 그린다(안드로이드 모양 카드가
+        /// 튜토리얼의 짧은 변 411dp 대신 240dp 로 보는 것과 같은 비율, 1080 × 240 / 411 ≈ 630). 크기 단계의 차이는 그대로다.
+        /// </summary>
+        public const double PreviewWidth = 1120;
+        public const double PreviewHeight = 630;
+
+        /// <summary>
+        /// 모양 카드가 한 번 움직이는 시간(초, 안드로이드 PREVIEW_PLAY_SEC). 종류 쪽 대본의 처음부터 환경음·대화음을 지나 첫 위협음이 울린
+        /// 직후까지라, 멈춘 그림(<see cref="TutorialScript.StillAtSec"/> 의 위협음)과 이어진다. 저절로 5초 넘게 움직이지 않아야 멈춤 단추
+        /// 없이 둘 수 있다(WCAG 2.2.2).
+        /// </summary>
+        public const double PreviewPlaySec = 4.9;
+
         private readonly float[] _frame = new float[VisualizerEngine.Channels];
-        private readonly VisualModeSettings _settings = DemoSettings();
+        private readonly VisualModeSettings _settings;
 
         /// <param name="scene">그릴 쪽.</param>
         /// <param name="visualMode">표현 모드.</param>
         /// <param name="runToStill">멈춰 둘 장면까지 미리 돌려 둔다. 끄면 아무것도 흘리지 않은 엔진으로 시작한다(시험이 0초부터 흘릴 때).</param>
-        public TutorialDemo(TutorialScene scene, int visualMode, bool runToStill = true)
+        /// <param name="settings">그릴 모드 설정. 없으면 튜토리얼 그림의 설정(<see cref="DemoSettings"/>)이다. 받은 객체를 고치지 않는다.</param>
+        /// <param name="width">엔진이 그리는 화면의 너비(DIP). 없으면 기준 화면이다.</param>
+        /// <param name="height">엔진이 그리는 화면의 높이(DIP).</param>
+        public TutorialDemo(TutorialScene scene, int visualMode, bool runToStill = true, VisualModeSettings? settings = null,
+            double width = ReferenceWidth, double height = ReferenceHeight)
         {
             Scene = scene;
             VisualMode = visualMode;
-            Engine.SetSurfaceSize(ReferenceWidth, ReferenceHeight);
+            _settings = settings?.Copy() ?? DemoSettings();
+            Width = width;
+            Height = height;
+            Engine.SetSurfaceSize(width, height);
             if (runToStill) RunTo(scene.StillAtSec());
         }
+
+        /// <summary>엔진이 그리는 화면의 너비(DIP). 그리는 쪽이 이 크기의 도형을 그림 크기로 줄인다.</summary>
+        public double Width { get; }
+
+        /// <summary>엔진이 그리는 화면의 높이(DIP).</summary>
+        public double Height { get; }
 
         public TutorialScene Scene { get; }
 
@@ -69,6 +97,20 @@ namespace SoundVisualizer.Tutorial
             PositionSpeed = 20,
             Sensitivity = 10,
         };
+
+        /// <summary>
+        /// 쉬운 설정의 모양 카드가 그릴 설정(안드로이드 previewSettings): 사용자의 그 모드 설정이되 진하기와 반응(민감도)은 튜토리얼 그림만큼은
+        /// 올린다. 작은 그림에서 기본값 그대로면 어두운 장면 위의 색이 흐리고 박자가 잘 읽히지 않는다(<see cref="DemoSettings"/> 와 같은 까닭).
+        /// 크기는 그대로라 크기 단계를 바꾸면 그림도 바뀐다. 사용자 설정과 섞이지 않게 새로 만든다.
+        /// </summary>
+        public static VisualModeSettings PreviewSettings(VisualModeSettings user)
+        {
+            var demo = DemoSettings();
+            var shown = user.Copy();
+            shown.VisualOpacity = Math.Max(user.VisualOpacity, demo.VisualOpacity);
+            shown.Sensitivity = Math.Max(user.Sensitivity, demo.Sensitivity);
+            return shown;
+        }
 
         /// <summary>대본 시각 <paramref name="t"/>(초)의 프레임 하나를 엔진에 흘린다. 시각은 앞으로만 간다.</summary>
         public void Step(double t)

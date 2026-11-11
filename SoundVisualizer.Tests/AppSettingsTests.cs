@@ -36,12 +36,13 @@ public sealed class AppSettingsTests : IDisposable
         if (File.Exists(_path)) File.Delete(_path);
     }
 
-    // 전체 초기화는 소리 탭의 두 값과 튜토리얼을 본 기록을 건드리지 않으므로 테스트마다 따로 비운다.
+    // 전체 초기화는 소리 탭의 두 값과 튜토리얼을 본 기록, 설정 탭의 화면(쉬운·자세한 설정)을 건드리지 않으므로 테스트마다 따로 비운다.
     private static void ClearSoundTab()
     {
         AppSettings.SoundTypes = new Dictionary<string, string>();
         AppSettings.ClassifyAdvanced = false;
         AppSettings.TutorialSeen = false;
+        AppSettings.EasySettings = AppSettings.DefaultEasySettings;
     }
 
     [Fact]
@@ -474,5 +475,129 @@ public sealed class AppSettingsTests : IDisposable
         AppSettings.ResetToDefaults();
 
         Assert.True(AppSettings.TutorialSeen);
+    }
+
+    // ===== 설정 탭을 쉬운 설정으로 열지(모바일 EasySettingsSettingTest, #408) =====
+    // 새로 설치한 사람과 모드별 상세 값을 바꾼 적이 없는 사람은 쉬운 설정으로 연다. 바꾼 적이 있는 사람은 손에 익은 자세한 설정으로 연다.
+
+    [Fact]
+    public void 새로_설치하면_쉬운_설정이다()
+    {
+        Assert.True(AppSettings.DefaultEasySettings, "기본값을 끄려면 이 테스트부터 고쳐야 한다");
+        AppSettings.EasySettings = false; // 앞에서 들고 있던 값이 남지 않는지도 본다
+
+        AppSettings.Load();
+
+        Assert.False(File.Exists(_path));
+        Assert.True(AppSettings.EasySettings);
+    }
+
+    [Theory]
+    [InlineData("WaveMode", "PositionSpeed", "77")]
+    [InlineData("PadMode", "Intensity", "77")]
+    [InlineData("CircleMode", "CircleRadius", "77")]
+    [InlineData("OutlineMode", "GlowIntensity", "77")]
+    [InlineData("PadMode", "IsGlowMode", "true")]
+    [InlineData("WaveMode", "IntensityAsOpacity", "true")]
+    public void 모드별_상세_값을_하나라도_바꾼_사람은_자세한_설정으로_연다(string mode, string property, string value)
+    {
+        File.WriteAllText(_path, "{ \"" + mode + "\": { \"" + property + "\": " + value + " } }");
+
+        AppSettings.Load();
+
+        Assert.False(AppSettings.EasySettings);
+    }
+
+    [Fact]
+    public void 처음_값과_같은_모드_설정이나_쉬운_설정에도_보이는_값만_바꾼_사람은_쉬운_설정이다()
+    {
+        // 표현 모드·색·표시처럼 쉬운 설정에도 보이는 값과 모드 카드 밖의 값(최대 프레임, 단축키)은 따지지 않는다.
+        File.WriteAllText(_path, """
+            { "VisualMode": 3, "ColorDanger": "#FF00FF00", "ShowSpeech": false, "TargetFps": 60, "VisualModeKeyBind": [ 66 ],
+              "WaveMode": { "Intensity": 50, "Sensitivity": 3.75 }, "CircleMode": { "CircleRadius": 40 } }
+            """);
+
+        AppSettings.Load();
+
+        Assert.True(AppSettings.EasySettings);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void 저장한_화면이_있으면_모드_설정과_상관없이_그_화면이다(bool easy)
+    {
+        string mode = easy ? """{ "PositionSpeed": 90 }""" : "{ }";
+        File.WriteAllText(_path, "{ \"EasySettings\": " + (easy ? "true" : "false") + ", \"WaveMode\": " + mode + " }");
+
+        AppSettings.Load();
+
+        Assert.Equal(easy, AppSettings.EasySettings);
+    }
+
+    [Fact]
+    public void 깨진_설정_파일은_처음_값으로_시작하므로_쉬운_설정이다()
+    {
+        File.WriteAllText(_path, "{ not json");
+
+        AppSettings.Load();
+
+        Assert.True(AppSettings.EasySettings);
+    }
+
+    [Fact]
+    public void 고른_화면은_저장한_뒤_다시_읽힌다()
+    {
+        AppSettings.EasySettings = false;
+        AppSettings.SaveNow();
+        AppSettings.EasySettings = true;
+
+        AppSettings.Load();
+
+        Assert.False(AppSettings.EasySettings);
+        using var doc = JsonDocument.Parse(File.ReadAllText(_path));
+        Assert.False(doc.RootElement.GetProperty("EasySettings").GetBoolean());
+    }
+
+    [Fact]
+    public void 쉬운_설정에서_크기를_바꿔도_다음에_열_때_쉬운_설정이다()
+    {
+        // 저장한 적이 없어 읽을 때 정한 값은 다음 저장에 함께 남는다. 남지 않으면 바꾼 크기 때문에 다음에는 자세한 설정으로 열린다(모바일과 같은 함정).
+        AppSettings.Load();
+        Assert.True(AppSettings.EasySettings);
+
+        EasySize.Large.ApplyTo(AppSettings.CurrentModeSettings);
+        AppSettings.SaveNow();
+        AppSettings.Load();
+
+        Assert.True(AppSettings.EasySettings);
+        Assert.Equal(EasySize.Large, EasySizes.Of(AppSettings.CurrentModeSettings));
+    }
+
+    [Fact]
+    public void 이_기능_전의_파일에서_정한_자세한_설정도_다음_저장에_남는다()
+    {
+        File.WriteAllText(_path, """{ "PadMode": { "Intensity": 77 } }""");
+        AppSettings.Load();
+        Assert.False(AppSettings.EasySettings);
+
+        AppSettings.SaveNow();
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(_path));
+        Assert.False(doc.RootElement.GetProperty("EasySettings").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void 전체_초기화는_고른_화면을_건드리지_않는다(bool easy)
+    {
+        // 화면 설정이다(소리 탭의 고급 모드와 같다). 자세한 설정 맨 아래의 초기화를 누르자마자 쉬운 설정으로 바뀌면 헷갈린다.
+        AppSettings.EasySettings = easy;
+        AppSettings.PadMode.Intensity = 90;
+
+        AppSettings.ResetToDefaults();
+
+        Assert.Equal(easy, AppSettings.EasySettings);
     }
 }
