@@ -190,6 +190,21 @@ public class AiDebugTextTests
     }
 
     [Fact]
+    public void 말소리_미리보기는_종류_뒤에_PREVIEW_를_붙여_정규_확정과_구분한다()
+    {
+        // 모바일 AiDebugText 의 " ~PREVIEW"(#422). 점의 색과 이름·확신도는 미리보기의 대화음 값이다.
+        var regular = Result(SoundType.Ambient, "Music", 0.6f);
+        var preview = Format(regular.AsSpeechPreview("Speech", 0.83f, timestampMs: 1_100L));
+
+        Assert.Equal("AMBIENT", Format(regular).Coarse);
+        Assert.Equal("SPEECH ~PREVIEW", preview.Coarse);
+        Assert.Equal(SoundType.Speech, preview.ColorType);
+        Assert.Equal("Speech", preview.Label);
+        Assert.Equal("0.83", preview.Confidence);
+        Assert.Equal("thr Y   age 0.1s", preview.Detail); // 나이는 미리보기를 만든 때부터
+    }
+
+    [Fact]
     public void 같은_입력이면_같은_줄로_본다()
     {
         // 오버레이는 지난번과 같은 줄이면 글자를 다시 넣지 않는다. top-5 목록도 내용으로 비교해야 한다.

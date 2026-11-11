@@ -62,7 +62,8 @@ namespace SoundVisualizer
         private void PollDebugHud()
         {
             if (_isClosed) return;
-            var result = Volatile.Read(ref _aiPipeline)?.LastClassification();
+            // 오버레이가 그리는 것과 같은 화면용 결과를 읽는다. 말소리 미리보기면 종류 뒤에 ~PREVIEW 가 붙고, 기록에도 그 결과가 한 줄로 남는다(모바일과 같다).
+            var result = Volatile.Read(ref _aiPipeline)?.LastDisplayClassification();
             // 결과의 시각(TimestampMs)과 같은 벽시계다. 소리 크기는 캡처 스레드와 같은 단조 시계로 잰다.
             long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             float level = _level.Read(Environment.TickCount64);

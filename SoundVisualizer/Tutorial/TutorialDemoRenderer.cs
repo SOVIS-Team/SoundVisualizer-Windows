@@ -20,7 +20,17 @@ namespace SoundVisualizer.Tutorial
         /// 외곽선 모드의 선 두께(기준 화면 DIP). 오버레이는 4 다. 그림은 기준 화면을 4분의 1 남짓으로 줄여 그려 4 면 1px 아래로
         /// 가늘어져 잘 보이지 않으므로, 그림에서만 두 배로 그린다(줄인 뒤 2px 쯤). 다른 모드의 모양은 줄인 비율 그대로다.
         /// </summary>
-        private const double OutlineThickness = 8.0;
+        public const double OutlineThickness = 8.0;
+
+        private readonly double _outlineThickness;
+
+        /// <param name="outlineThickness">
+        /// 외곽선 모드의 선 두께(엔진 화면 DIP). 그림을 더 작게 줄이는 쪽(쉬운 설정의 모양 카드)이 줄인 뒤에도 튜토리얼 그림만큼 보이게 굵힌다.
+        /// </param>
+        public TutorialDemoRenderer(double outlineThickness = OutlineThickness)
+        {
+            _outlineThickness = outlineThickness;
+        }
 
         // 표현 모드 번호(AppSettings.VisualMode) 순서. 모드마다 점 배열을 들고 있어 그림 전용으로 따로 만든다.
         private readonly IVisualizerMode[] _visualizers =
@@ -55,8 +65,8 @@ namespace SoundVisualizer.Tutorial
             // 사운드 모드 2.0 이라 분포가 이미 둘레 자리 순서다(MainWindow.DrawWave 의 2.0 경로).
             engine.Depths.CopyTo(_depths);
             engine.Distribution.CopyTo(_dists);
-            _context.Width = TutorialDemo.ReferenceWidth;
-            _context.Height = TutorialDemo.ReferenceHeight;
+            _context.Width = demo.Width;
+            _context.Height = demo.Height;
             _context.BaseDepth = engine.BaseDepth;
             _context.ChannelDepths = _depths;
             _context.ChannelDists = _dists;
@@ -76,7 +86,7 @@ namespace SoundVisualizer.Tutorial
                 {
                     shape.Fill = Brushes.Transparent;
                     shape.Stroke = brush;
-                    shape.StrokeThickness = OutlineThickness;
+                    shape.StrokeThickness = _outlineThickness;
                 }
                 else
                 {

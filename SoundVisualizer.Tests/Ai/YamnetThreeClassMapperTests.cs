@@ -106,15 +106,16 @@ public class YamnetThreeClassMapperTests
     }
 
     [Fact] // approvedHumanVocalizationsAreSpeechUsingExactLabels
-    public void 사람이_내는_소리는_정확히_같은_이름만_대화음()
+    public void 사람이_내는_소리는_정확히_같은_이름만_사람_소리()
     {
         Assert.All(new[]
         {
             "Bellow", "Whoop", "Yell", "Cheering",
             "Giggle", "Snicker", "Belly laugh", "Chuckle, chortle",
             "Baby cry, infant cry", "Whimper", "Wail, moan",
+            "Sneeze", "Cough", "Breathing",
         }, name => Assert.Equal(SoundType.Speech, YamnetThreeClassMapper.MapDisplayNameToCoarse(name)));
-        Assert.All(new[] { "Whimper (dog)", "Bellow-like sound", "Cheering music" }, name =>
+        Assert.All(new[] { "Whimper (dog)", "Bellow-like sound", "Cheering music", "Breathing machine", "Cough-like sound" }, name =>
             Assert.Equal(SoundType.Ambient, YamnetThreeClassMapper.MapDisplayNameToCoarse(name)));
     }
 

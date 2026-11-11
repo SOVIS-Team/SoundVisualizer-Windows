@@ -128,6 +128,8 @@ namespace SoundVisualizer
             catch { }
 
             LoadSettingsToUI();
+            // 설정 탭은 저장된 화면(쉬운 설정·자세한 설정)으로 연다. 새로 설치하면 쉬운 설정이다(LauncherWindow.EasySettings.cs).
+            ShowSettingsView();
             _isInitializing = false;
 
             ApplyCodeTexts();
@@ -156,7 +158,7 @@ namespace SoundVisualizer
 
         /// <summary>
         /// 바인딩이 아니라 코드가 넣는 글자: 실행 상태와 홈 안내(트레이 포함), 단축키 이름(키가 없을 때의 표시도 언어를 따른다),
-        /// 소리 종류 색 버튼의 화면 읽어주기 이름.
+        /// 소리 종류 색 버튼과 쉬운 설정의 화면 읽어주기 이름.
         /// </summary>
         private void ApplyCodeTexts()
         {
@@ -165,6 +167,7 @@ namespace SoundVisualizer
             if (_bindingTarget != "Sound") BtnSoundModeHotkey.Content = GetKeysName(AppSettings.StereoUpmixKeyBind);
             if (_bindingTarget != "Edit") BtnEditHotkey.Content = GetKeysName(AppSettings.EditModeKeyBind);
             Ui.ColorButtonNames.Apply(BtnColorAmbient, BtnColorSpeech, BtnColorDanger);
+            EasyView.ApplyCodeTexts();
         }
 
         private void SetStatusUI(bool isRunning)
@@ -212,6 +215,9 @@ namespace SoundVisualizer
 
             // 4. 소리 탭: 종류 색(점·거르기 칸)과 바꾼 종류
             SoundsTabView?.ReloadSettings();
+
+            // 5. 쉬운 설정: 모양·크기 칸과 소리 종류 줄(오버레이 편집이나 자세한 설정에서 바꾼 값)
+            EasyView?.Reload();
         }
 
         /// <summary>
@@ -690,7 +696,7 @@ namespace SoundVisualizer
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "https://github.com/amophi/SoundVisualizer",
+                    FileName = "https://github.com/SOVIS-Team/SoundVisualizer-Windows",
                     UseShellExecute = true
                 });
             }

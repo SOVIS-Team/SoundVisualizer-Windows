@@ -30,6 +30,10 @@ namespace SoundVisualizer.Ai
         private readonly int _windowSamples;
         private int _tail;
         private int _count;
+        // 말소리 미리보기(SileroStreamWorker)가 링의 어디까지 읽었는지 맞춰 보는 값. 프레임은 이 세대에 들어온 모노 프레임 수이고,
+        // 세대는 Reset 마다 하나씩 올라 이전 캡처의 소리를 새 캡처의 소리로 읽지 않게 한다(Android #422).
+        private long _totalFrames;
+        private long _generation;
 
         /// <summary>섞은 모노를 링에 넣기 전에 잠깐 두는 곳. 버퍼마다 할당하지 않으려고 다시 쓴다.</summary>
         private readonly float[] _monoScratch = new float[MaxRingSize / 2];
@@ -73,6 +77,43 @@ namespace SoundVisualizer.Ai
             {
                 _tail = 0;
                 _count = 0;
+                _totalFrames = 0;
+                _generation++;
+            }
+        }
+
+        /// <summary>링의 세대와 이 세대에 들어온 모노 프레임 수. 어느 스레드에서나 부른다.</summary>
+        internal readonly record struct StreamCursor(long Generation, long Frames);
+
+        /// <summary>지금의 세대와 들어온 프레임 수(Android 의 cursor()).</summary>
+        internal StreamCursor Cursor()
+        {
+            lock (_lock) return new StreamCursor(_generation, _totalFrames);
+        }
+
+        /// <summary>
+        /// 이 세대의 절대 프레임 [<paramref name="first"/>, <paramref name="first"/> + <paramref name="destination"/>.Length) 를 복사한다
+        /// (Android 의 copyRange). 0 보다 앞의 프레임은 0 이다. 세대가 다르거나, 아직 다 들어오지 않았거나, 이미 2초 밖으로 밀려났으면
+        /// 복사하지 않고 false 를 돌려준다. 그래서 미래의 소리나 덮어쓴 소리, 이전 캡처의 소리를 새 소리로 읽지 않는다.
+        /// 모델을 기다리지 않고 잠금 안에서 복사만 한다.
+        /// </summary>
+        internal bool CopyRange(long generation, long first, Span<float> destination)
+        {
+            lock (_lock)
+            {
+                long size = destination.Length;
+                if (generation != _generation || first + size > _totalFrames || Math.Max(first, 0L) < _totalFrames - _count) return false;
+
+                int leading = (int)Math.Clamp(-first, 0L, size);
+                destination[..leading].Clear();
+                int remaining = destination.Length - leading;
+                if (remaining == 0) return true;
+                // 링 끝(_tail)이 프레임 _totalFrames 다. 2의 거듭제곱 마스크라 음수도 링 안의 자리로 돈다.
+                int ringStart = (int)((_tail - (_totalFrames - (first + leading))) & _ringMask);
+                int firstPart = Math.Min(remaining, _ring.Length - ringStart);
+                _ring.AsSpan(ringStart, firstPart).CopyTo(destination[leading..]);
+                _ring.AsSpan(0, remaining - firstPart).CopyTo(destination[(leading + firstPart)..]);
+                return true;
             }
         }
 
@@ -108,6 +149,7 @@ namespace SoundVisualizer.Ai
         {
             lock (_lock)
             {
+                _totalFrames += monoChunk.Length;
                 for (int i = 0; i < monoChunk.Length; i++)
                 {
                     _ring[_tail] = monoChunk[i];

@@ -18,6 +18,36 @@ This project (`SoundVisualizer`) uses the following third-party open-source libr
 - **Description**: A pre-trained network that predicts 521 audio event classes. The app runs it unmodified with ONNX Runtime and maps its output to three sound types (ambient, speech, danger). The app checks the SHA-256 of both model files at load.
 - **Class names**: The class names come from the AudioSet ontology, distributed under Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0); the AudioSet dataset is distributed under CC BY 4.0. https://research.google.com/audioset/
 
+### Silero VAD (speech preview)
+- **Files**: `SoundVisualizer/AIModel/silero_vad.onnx`
+- **License**: MIT License (Copyright (c) 2020-present Silero Team), full text below
+- **Source**: Silero Team, [snakers4/silero-vad](https://github.com/snakers4/silero-vad) v6.2.3, commit 5cd7945676eb32225748052e2e6a0580e4686a08 (`src/silero_vad/data/silero_vad.onnx`), included unmodified.
+- **Model SHA256**: 1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3
+- **Description**: A small voice activity detection network. It is not a sound classifier: when YAMNet first hears speech, the app uses it to check the newest audio and shows the speech color one step earlier. It never changes the YAMNet result or danger sounds. The app checks the SHA-256 of the model file at load.
+
+```text
+MIT License
+Copyright (c) 2020-present Silero Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## Data
 
 ### AudioSet ontology (sound names and sound groups in the Sounds tab)

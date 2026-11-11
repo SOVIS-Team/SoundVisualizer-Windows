@@ -8,8 +8,8 @@ namespace SoundVisualizer.Ai
     /// <summary>
     /// YAMNet 클래스 이름(영어 display_name) → 기본 소리 종류. 모바일 YamnetThreeClassMapper.kt 와 규칙이 같다.
     ///
-    /// 위협음 → 대화음 → 환경음 순서로 보고 어디에도 걸리지 않으면 환경음이다. 실제 521개 클래스는 위협음 37개,
-    /// 대화음 33개, 환경음 451개로 나뉜다. 옛 PC 판이 위협음으로 보던 총소리 대리 라벨(Plop, Gargling, 비·폭포 소리)과
+    /// 위협음 → 사람 소리 → 환경음 순서로 보고 어디에도 걸리지 않으면 환경음이다. 실제 521개 클래스는 위협음 37개,
+    /// 사람 소리 36개, 환경음 448개로 나뉜다. 옛 PC 판이 위협음으로 보던 총소리 대리 라벨(Plop, Gargling, 비·폭포 소리)과
     /// 발소리는 모바일에서 원래 뜻대로 환경음으로 돌렸으므로(#319) 여기에도 없다.
     ///
     /// 이름을 소문자로 바꿔 비교하므로 부를 때마다 문자열을 하나 만든다. 추론 중에는 부르지 않고,
@@ -71,8 +71,8 @@ namespace SoundVisualizer.Ai
         {
             // 악기 이름이다. 사람 목소리가 아니다.
             if (s == "singing bowl") return false;
-            // 대화음은 알아듣는 말만이 아니라 사람이 내는 소리 전체다. 개의 낑낑거림 같은 비슷한 이름이 따라오지 않게
-            // 정확히 같은 이름만 넣는다(#345).
+            // 사람 소리는 알아듣는 말만이 아니라 사람이 내는 소리 전체다. 재채기·기침·숨소리도 들어간다(모바일 #421, 사용자 승인).
+            // 개의 낑낑거림 같은 비슷한 이름이 따라오지 않게 정확히 같은 이름만 넣는다(#345).
             if (HumanVocalizationLabels.Contains(s)) return true;
             if (s.Contains("speech") || s.Contains("conversation") || s.Contains("narration")) return true;
             if (s.Contains("speaking") || s.Contains("babbling")) return true;
@@ -104,12 +104,15 @@ namespace SoundVisualizer.Ai
             "emergency vehicle", "skidding", "tire squeal", "slam",
         }.ToFrozenSet(StringComparer.Ordinal);
 
-        /// <summary>대화음으로 옮긴 사람 소리 11개(#345). 소문자. 테스트가 실제 클래스 이름과 맞는지 확인한다.</summary>
+        /// <summary>
+        /// 사람 소리로 옮긴 이름 14개: 사람 발성 11개(#345)와 재채기·기침·숨소리(모바일 #421). 소문자. 테스트가 실제 클래스 이름과 맞는지 확인한다.
+        /// </summary>
         internal static readonly FrozenSet<string> HumanVocalizationLabels = new[]
         {
             "bellow", "whoop", "yell", "cheering",
             "giggle", "snicker", "belly laugh", "chuckle, chortle",
             "baby cry, infant cry", "whimper", "wail, moan",
+            "sneeze", "cough", "breathing",
         }.ToFrozenSet(StringComparer.Ordinal);
     }
 }

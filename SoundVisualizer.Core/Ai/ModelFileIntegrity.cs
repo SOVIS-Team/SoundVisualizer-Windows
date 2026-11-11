@@ -53,6 +53,36 @@ namespace SoundVisualizer.Ai
             }
         }
 
+        /// <summary>
+        /// 파일을 한 번 읽어 크기와 SHA-256 을 확인하고 그 바이트를 돌려준다. 확인한 바이트로 바로 세션을 만들면 확인과 불러오기 사이에
+        /// 파일이 바뀌어도 확인하지 않은 모델을 쓰지 않는다(Android SileroInference 가 assets 를 읽어 해시한 바이트로 세션을 만드는 것과 같다).
+        /// 통째로 메모리에 올리므로 몇 MB 인 작은 모델에만 쓴다.
+        /// </summary>
+        /// <exception cref="FileNotFoundException">파일이 없다.</exception>
+        /// <exception cref="InvalidDataException">크기나 SHA-256 이 배포한 파일과 다르다.</exception>
+        public static byte[] ReadVerified(string directory, ExpectedFile expected)
+        {
+            ArgumentNullException.ThrowIfNull(directory);
+            ArgumentNullException.ThrowIfNull(expected);
+            string path = Path.Combine(directory, expected.Name);
+            var file = new FileInfo(path);
+            if (!file.Exists)
+                throw new FileNotFoundException($"Model file '{expected.Name}' is missing", path);
+            if (file.Length != expected.ByteCount)
+                throw new InvalidDataException(
+                    $"Model file '{expected.Name}' is {file.Length} bytes, expected {expected.ByteCount} (truncated or a different model): {path}");
+            byte[] bytes = File.ReadAllBytes(path);
+            // 크기를 본 뒤에 파일이 바뀌었을 수 있으므로 읽은 바이트로 다시 본다.
+            if (bytes.LongLength != expected.ByteCount)
+                throw new InvalidDataException(
+                    $"Model file '{expected.Name}' is {bytes.LongLength} bytes, expected {expected.ByteCount} (truncated or a different model): {path}");
+            string actual = Convert.ToHexStringLower(SHA256.HashData(bytes));
+            if (actual != expected.Sha256)
+                throw new InvalidDataException(
+                    $"Model file '{expected.Name}' has SHA-256 {actual}, expected {expected.Sha256} (damaged or a different model): {path}");
+            return bytes;
+        }
+
         internal static string Sha256Hex(string path)
         {
             using var stream = File.OpenRead(path);

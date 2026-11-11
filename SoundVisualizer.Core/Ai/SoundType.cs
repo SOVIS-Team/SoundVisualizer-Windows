@@ -14,7 +14,7 @@ namespace SoundVisualizer.Ai
         /// <summary>환경음.</summary>
         Ambient = 0,
 
-        /// <summary>대화음. 알아듣는 말만이 아니라 사람이 내는 소리 전반(웃음, 울음, 고함 등)이다.</summary>
+        /// <summary>사람 소리(옛 이름 대화음). 알아듣는 말만이 아니라 사람이 내는 소리 전반(웃음, 울음, 고함, 재채기·기침·숨소리 등)이다.</summary>
         Speech = 1,
 
         /// <summary>위협음.</summary>

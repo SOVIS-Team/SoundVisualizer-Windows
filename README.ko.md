@@ -8,7 +8,7 @@
 
 <img width="1024" height="818" alt="SoundVisualizer" src="https://github.com/user-attachments/assets/b11aa5b3-c995-4e36-8ff6-3e2f2c2b2388" />
 
-<img width="1024" alt="SoundVisualizer 오버레이: 환경음, 대화음, 위협음, 왼쪽에서 나는 소리, 오른쪽에서 나는 소리" src="docs/images/readme_screens.png" />
+<img width="1024" alt="SoundVisualizer 오버레이: 환경음, 사람 소리, 위협음, 왼쪽에서 나는 소리, 오른쪽에서 나는 소리" src="docs/images/readme_screens.png" />
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![WPF](https://img.shields.io/badge/WPF-blue?style=for-the-badge&logo=windows)](https://docs.microsoft.com/en-us/dotnet/desktop/wpf/)
@@ -23,9 +23,9 @@
 <br/>
 
 > **SoundVisualizer**는 컴퓨터의 시스템 오디오를 실시간으로 캡처하여 방향·크기·의미를 그래픽 오버레이로 변환하는 데스크톱 애플리케이션입니다. 
-단순한 파형 시각화를 넘어, **YAMNet**과 **ONNX Runtime** 기반의 AI 사운드 분류기를 내장하여 현재 재생 중인 소리의 종류(배경음, 대화음, 위협음 등)를 실시간으로 인지하고 피드백을 제공합니다.
+단순한 파형 시각화를 넘어, **YAMNet**과 **ONNX Runtime** 기반의 AI 사운드 분류기를 내장하여 현재 재생 중인 소리의 종류(환경음, 사람 소리, 위협음)를 실시간으로 인지하고 피드백을 제공합니다.
 
-> 📱 안드로이드 버전도 있습니다: [SoundVisualizer for Android](https://github.com/bibibic76/SoundVisualizer)
+> 📱 안드로이드 버전도 있습니다: [SoundVisualizer for Android](https://github.com/SOVIS-Team/SoundVisualizer-Android)
 
 ---
 
@@ -59,6 +59,7 @@
 - **패드 모드 (Pad)**: 지정된 공간 그리드(방향)에 고정된 패드 형태로 소리를 표현합니다.
 - **외곽선 모드 (Outline)**: 파도 모드를 기반으로, 파도의 상한 외곽선 테두리만 표현하여 화면 가림을 최소화합니다.
 - 30 FPS부터 모니터 주사율까지, 최대 프레임을 얼마로 두어도 그래픽이 같은 빠르기로 움직입니다.
+- **쉬운 설정**: 설정 탭은 그림으로 선택하는 화면으로 열립니다. 모양, 크기(작게·보통·크게), 보여 줄 소리 종류를 선택하고, 나머지 설정은 ‘자세한 설정’에서 바꿉니다.
 
 ### 2. 온스크린 실시간 제어 및 에디터
 전체 화면 게임을 내리지 않고도 오버레이 상태에서 즉각적인 수정이 가능합니다.
@@ -71,14 +72,15 @@
 - 스테레오 출력에서는 좌우에 함께 있는 소리를 화면 위쪽에, 좌우 차이만 옆쪽에 그립니다. 그래서 가운데에서 나는 소리가 양쪽에서 나는 소리처럼 보이지 않습니다.
 
 ### 4. AI 실시간 사운드 분류 (ONNX & YAMNet)
-- **3-Class 분류 체계**: 모든 소리를 `Ambient(환경음)`, `Speech(대화음)`, `Danger(위협음)` 3가지로 분석하여 카테고리별로 지정된 UI 색상과 투명도로 동적 시각 피드백을 제공합니다. 색상과 투명도는 커스터마이징이 가능합니다.
+- **3-Class 분류 체계**: 모든 소리를 `Ambient(환경음)`, `Human sounds(사람 소리)`, `Danger(위협음)` 3가지로 분석하여 카테고리별로 지정된 UI 색상과 투명도로 동적 시각 피드백을 제공합니다. 색상과 투명도는 커스터마이징이 가능합니다.
 - **위협 단서**: 사이렌, 경보, 폭발음, 폭죽 같은 경고음은 모델의 상위 후보 다섯 개 안에(5% 이상) 들기만 해도 `위협음`으로 봅니다. 음악이나 게임 소리에 묻혀도 놓치지 않기 위해서입니다. 총소리 이름은 오경보를 막기 위해 이렇게 끌어올리지 않습니다.
-- **흔들리지 않는 색**: `위협음`은 조건을 넘는 첫 결과에 바로 바뀌고, `대화음`과 `환경음`은 두 번 연달아 같아야 바뀌어 색이 깜빡이지 않습니다. 조용한 동안에는 AI 가 쉬고, 소리가 나면 바로 다시 듣습니다.
+- **흔들리지 않는 색**: `위협음`은 조건을 넘는 첫 결과에 바로 바뀌고, `사람 소리`와 `환경음`은 두 번 연달아 같아야 바뀌어 색이 깜빡이지 않습니다. 조용한 동안에는 AI 가 쉬고, 소리가 나면 바로 다시 듣습니다.
+- **더 빠른 사람 소리**: 말소리가 시작되면 작은 음성 감지 모델(Silero VAD)이 새로 들어온 소리를 확인해 `사람 소리`를 한 박자(약 0.25초) 먼저 보여 줍니다. 화면 표시만 바꾸며, `위협음`과 분류 탭에서 정한 종류가 늘 우선합니다.
 - **모든 채널을 듣습니다**: 5.1/7.1 환경에서는 앞쪽뿐 아니라 뒤쪽·옆쪽 채널의 소리도 AI 가 듣습니다.
 - **늦게 온 위협음**: `위협음` 판정이 소리보다 조금 늦게 와도, 그 소리를 나던 때의 크기로 그립니다. 앞서 숨겨 둔 종류였던 소리도 그렇습니다.
 
 ### 5. 소리마다 종류 정하기 (분류 탭)
-- AI 가 알아듣는 소리 521개를 안드로이드 버전과 같은 묶음으로 보여 주고, 묶음마다(고급 모드에서는 소리마다) `환경음`, `대화음`, `위협음` 가운데 무엇으로 볼지 선택합니다.
+- AI 가 알아듣는 소리 521개를 안드로이드 버전과 같은 묶음으로 보여 주고, 묶음마다(고급 모드에서는 소리마다) `환경음`, `사람 소리`, `위협음` 가운데 무엇으로 볼지 선택합니다.
 - 이름으로 찾고, 종류나 바꾼 소리로 거르고, 한 번에 모두 되돌릴 수 있습니다. 바꾼 것은 오버레이의 AI 에 바로 반영됩니다.
 
 ### 6. 도움말, 안내, 트레이 아이콘
@@ -111,7 +113,7 @@
 
 SoundVisualizer는 설치가 필요 없는 가벼운 **포터블(Portable)** 패키지로 제공됩니다. Windows 10/11 (64비트)에서 돌아가며, .NET 을 따로 설치하지 않아도 됩니다.
 
-1. **[GitHub Releases](https://github.com/amophi/SoundVisualizer/releases)** 페이지에 접속합니다.
+1. **[GitHub Releases](https://github.com/SOVIS-Team/SoundVisualizer-Windows/releases)** 페이지에 접속합니다.
 2. 최신 버전의 `SoundVisualizer_vX.Y.zip` 파일을 다운로드해 원하는 곳에 압축 해제합니다.
 3. 폴더 내의 **`SoundVisualizer.exe`**를 실행합니다.
 4. 런처에서 언어 및 초기 설정을 마친 후, **실행**을 눌러 오버레이를 켭니다.
@@ -127,7 +129,7 @@ SoundVisualizer는 설치가 필요 없는 가벼운 **포터블(Portable)** 패
 1. **요구 사항**: Windows 10/11, .NET 10 SDK. Visual Studio 2026 (.NET 데스크톱 개발 워크로드)은 있어도 되고 없어도 됩니다.
 2. **리포지토리 클론**:
    ```bash
-   git clone https://github.com/amophi/SoundVisualizer.git
+   git clone https://github.com/SOVIS-Team/SoundVisualizer-Windows.git
    ```
 3. 리포지토리 폴더에서 빌드하고 테스트합니다.
    ```bash

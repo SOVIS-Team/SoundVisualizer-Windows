@@ -72,6 +72,12 @@ namespace SoundVisualizer.Diagnostics
         public const string Ellipsis = "…";
 
         /// <summary>
+        /// 말소리 미리보기(<see cref="AiClassificationResult.SpeechPreview"/>)일 때 종류 뒤에 붙인다(모바일과 같은 글자, #422). 아직 확정이 아닌
+        /// 화면 전용 표시라는 것을 정규 확정과 구분해 채점한다.
+        /// </summary>
+        public const string PreviewMarker = " ~PREVIEW";
+
+        /// <summary>
         /// HUD 한 줄에 들어가는 글자 수. 이보다 길면 폰에서 줄이 두 줄로 꺾인다(#165). 폭 411dp 폰에서 고정폭 11sp 글자(6.6dp)가
         /// 383dp 에 58자다. PC 화면은 훨씬 넓지만 두 판이 같은 줄을 만들도록 같은 한도를 지킨다(나이를 짧게 쓰는 규칙이 여기서 나온다).
         /// </summary>
@@ -110,7 +116,7 @@ namespace SoundVisualizer.Diagnostics
 
             return new AiDebugLines(
                 ColorType: result.Coarse,
-                Coarse: result.Coarse.ToLabel().ToUpperInvariant(),
+                Coarse: result.Coarse.ToLabel().ToUpperInvariant() + (result.SpeechPreview ? PreviewMarker : ""),
                 // 확정된 이름이 아직 없으면 빈 문자열이 온다. 임계값을 한 번도 넘지 못한 상태다.
                 Label: result.Display.Length == 0 ? "(none)" : result.Display,
                 Confidence: TwoDecimals(result.Confidence),

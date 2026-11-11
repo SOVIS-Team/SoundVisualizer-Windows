@@ -34,6 +34,14 @@ namespace SoundVisualizer.Ai
         public YamnetMappingPolicy Mapping => _mapping;
 
         /// <summary>
+        /// 마지막 <see cref="Process(ReadOnlySpan{float}, long, double, double)"/> 의 프레임이 첫 대화음 후보였으면 그 이름과 확신도, 아니면 null.
+        /// 첫 후보란 이번 프레임이 기준을 넘은 대화음이고, 확정은 아직 환경음이며, 대화음으로 바뀌려고 한 프레임째 기다리는 것이다
+        /// (다음 틱에서 같은 대화음이 오면 확정된다). 사용자 지정이 하나라도 있으면 늘 null 이다. 말소리 미리보기가 이 후보를 확인한다
+        /// (Android RealtimeAiPipeline 의 Silero 후보 조건과 같다, #422).
+        /// </summary>
+        internal SpeechOnsetFrame? SpeechOnset { get; private set; }
+
+        /// <summary>
         /// 설정의 사용자 지정(영어 클래스 이름 → "ambient"/"speech"/"danger")을 반영한다. 추론 틱마다 먼저 부르고, 무음이라 추론을
         /// 건너뛰는 틱에도 부른다. 그래야 이전 매핑에서 확정한 위협음이 소리가 다시 날 때 새 매핑으로 넘어오지 않는다.
         ///
@@ -50,6 +58,7 @@ namespace SoundVisualizer.Ai
             if (restarted)
             {
                 _postProcessor.Reset();
+                SpeechOnset = null;
                 Volatile.Write(ref _lastResult, null);
             }
             // 입력을 복사해 둔다. 설정 쪽 맵이 나중에 바뀌어도 이 결과가 어떤 입력으로 만들어졌는지는 그대로 남는다.
@@ -100,6 +109,13 @@ namespace SoundVisualizer.Ai
                 MappingSignature = mapping.Signature,
                 MappingInputs = _previousOverrides,
             };
+            SpeechOnset = decision.PostCoarse == SoundType.Speech &&
+                post.MeetsThreshold &&
+                post.UiCoarse == SoundType.Ambient &&
+                post.CandidateStreak == 1 &&
+                _previousOverrides.Count == 0
+                    ? new SpeechOnsetFrame(decision.PostDisplay, decision.PostConfidence)
+                    : null;
             Volatile.Write(ref _lastResult, result);
             return result;
         }
@@ -119,6 +135,7 @@ namespace SoundVisualizer.Ai
         public void Reset()
         {
             _postProcessor.Reset();
+            SpeechOnset = null;
             Volatile.Write(ref _lastResult, null);
         }
 
@@ -134,4 +151,7 @@ namespace SoundVisualizer.Ai
             return true;
         }
     }
+
+    /// <summary>첫 대화음 후보 프레임의 이름(영어 클래스 이름)과 확신도. 말소리 미리보기가 받아들여지면 화면에 이 값이 보인다.</summary>
+    internal readonly record struct SpeechOnsetFrame(string Display, float Confidence);
 }

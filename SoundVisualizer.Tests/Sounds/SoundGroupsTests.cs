@@ -11,7 +11,7 @@ namespace SoundVisualizer.Tests.Sounds;
 /// 모바일 SoundGroupsTest 를 옮겼다.
 ///
 /// 지금 매핑으로는 어떤 매핑에서도 지켜야 할 규칙만 보고, 나머지는 기본 종류를 정해 둔 가짜 매핑을 써서 매핑이 바뀌어도 흔들리지 않게
-/// 한다. 지금 매핑의 구역 구성(위협음 11, 대화음 6, 환경음 20)은 한 테스트에만 적어 둔다.
+/// 한다. 지금 매핑의 구역 구성(위협음 11, 사람 소리 7, 환경음 20 카드)은 한 테스트에만 적어 둔다.
 /// </summary>
 public class SoundGroupsTests
 {
@@ -85,14 +85,23 @@ public class SoundGroupsTests
     }
 
     [Fact]
-    public void 지금_매핑으로는_위협음_11_대화음_6_환경음_20_묶음이다()
+    public void 지금_매핑으로는_위협음_11_사람_소리_7_환경음_20_카드다()
     {
-        // 지금 매핑에서는 묶음마다 기본 종류가 하나라 카드 하나가 곧 묶음 하나다. 매핑을 모바일에서 옮겨 바꾸면 이 수도 함께 본다
-        // (YamnetLabelListTests 와 같다). 카드 나누기 자체는 매핑과 상관없이 위의 규칙을 지킨다.
+        // 매핑을 모바일에서 옮겨 바꾸면 이 수도 함께 본다(YamnetLabelListTests 와 같다). 카드 나누기 자체는 매핑과 상관없이 위의 규칙을 지킨다.
+        // 모바일 #421 로 숨소리·기침·재채기가 사람 소리가 되어, 몸 소리 묶음만 사람 소리 카드와 환경음 카드로 나뉜다.
+        // 나머지 36개 묶음은 기본 종류가 하나라 카드 하나가 곧 묶음 하나다.
         var sections = SoundGroups.Sections(SoundTestData.Entries());
         Assert.Equal(new[] { SoundType.Danger, SoundType.Speech, SoundType.Ambient }, sections.Select(section => section.Type));
-        Assert.Equal(new[] { 11, 6, 20 }, sections.Select(section => section.Cards.Count));
-        Assert.Equal(SoundGroupInfo.All, sections.SelectMany(section => section.Cards).Select(card => card.Group!.Value));
+        Assert.Equal(new[] { 11, 7, 20 }, sections.Select(section => section.Cards.Count));
+
+        var groups = sections.SelectMany(section => section.Cards).Select(card => card.Group!.Value).ToList();
+        Assert.Equal(SoundGroupInfo.All.Order(), groups.Distinct().Order());
+        Assert.Equal(2, groups.Count(group => group == SoundGroup.Body));
+        Assert.All(groups.Where(group => group != SoundGroup.Body).GroupBy(group => group), same => Assert.Single(same));
+
+        var bodySpeech = Card(sections, SoundGroup.Body, SoundType.Speech);
+        Assert.Equal(new[] { "Cough", "Breathing", "Sneeze" }, Names(bodySpeech.Members)); // 묶음 표 순서
+        Assert.DoesNotContain(Card(sections, SoundGroup.Body).Members, entry => entry.DefaultType == SoundType.Speech);
     }
 
     [Fact]

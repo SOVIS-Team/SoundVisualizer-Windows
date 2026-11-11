@@ -23,6 +23,25 @@ namespace SoundVisualizer
         public bool IntensityAsOpacity { get; set; } = false;
         public double OpacityFixedSize { get; set; } = 30.0;
         public double OpacityFixedMaxOpacity { get; set; } = 100.0;
+
+        /// <summary>모든 값이 처음 값(이 클래스의 초기값)과 같은지. 쉬운 설정으로 열지 정할 때 쓴다(<see cref="AppSettings.EasySettings"/>).</summary>
+        public bool HasDefaultValues() => HasSameValues(new VisualModeSettings());
+
+        /// <summary>
+        /// 모든 값이 <paramref name="other"/> 와 같은지. 속성을 하나씩 적지 않고 모두 훑는다. 나중에 값을 더해도 빠뜨리지 않는다
+        /// (안드로이드는 data class 의 == 로 같은 일을 한다).
+        /// </summary>
+        public bool HasSameValues(VisualModeSettings other)
+        {
+            foreach (var property in typeof(VisualModeSettings).GetProperties())
+            {
+                if (!Equals(property.GetValue(this), property.GetValue(other))) return false;
+            }
+            return true;
+        }
+
+        /// <summary>값을 그대로 옮긴 새 객체. 오버레이가 읽는 객체와 섞이지 않게 고쳐 쓸 때 쓴다(모드 그림의 설정 등).</summary>
+        public VisualModeSettings Copy() => (VisualModeSettings)MemberwiseClone();
     }
 
     public static class AppSettings
@@ -171,6 +190,12 @@ namespace SoundVisualizer
         // 보는 사람에 대한 값이라 전체 초기화(ResetToDefaults)가 건드리지 않는다. 모양 설정을 되돌렸다고 튜토리얼이 다시 뜨면 안 된다.
         public static bool TutorialSeen { get; set; } = false;
 
+        // 14. 설정 탭을 쉬운 설정(그림으로 선택하는 화면)으로 열지(모바일 easy_settings, #408). 새로 설치하면 쉬운 설정이다.
+        // 저장한 적이 없으면 읽을 때 정한다(Load, DefaultEasySettingsFor). 화면 설정이라 전체 초기화(ResetToDefaults)가 건드리지 않는다.
+        // 고급 모드(ClassifyAdvanced)와 같은 까닭이고, 자세한 설정 맨 아래의 초기화 버튼을 누르자마자 화면이 쉬운 설정으로 바뀌면 헷갈린다.
+        public const bool DefaultEasySettings = true;
+        public static bool EasySettings { get; set; } = DefaultEasySettings;
+
         /// <summary>설정 파일 위치. 포터블 배포라 실행 파일 옆에 둔다. 테스트는 임시 파일로 바꾼다.</summary>
         public static string SettingsFilePath { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
@@ -202,6 +227,9 @@ namespace SoundVisualizer
             // 모바일은 정한 값을 곧바로 저장한다(기기 표시가 먼저 저장되면 새 설치를 쓰던 사람으로 잘못 친다). PC 는 저장할 때마다 모든
             // 항목을 쓰므로, 무엇을 먼저 저장하든 정한 값이 함께 남는다. 파일이 없는 동안은 늘 새 설치로 읽힌다.
             TutorialSeen = File.Exists(SettingsFilePath);
+            // 쉬운 설정: 파일이 없으면 새로 설치한 것이라 쉬운 설정이다. 파일을 읽지 못하면(깨진 파일) 모든 값이 처음 값으로 시작하므로
+            // 손대지 않은 사람과 같이 쉬운 설정으로 연다. 읽으면 아래(모드 설정을 읽은 뒤)에서 정한다.
+            EasySettings = DefaultEasySettings;
             try
             {
                 if (File.Exists(SettingsFilePath))
@@ -254,6 +282,10 @@ namespace SoundVisualizer
 
                         if (data.OutlineMode != null) OutlineMode = data.OutlineMode;
                         else OutlineMode = new VisualModeSettings { Intensity = data.WaveIntensity, PositionSpeed = data.WavePositionSpeed, Sensitivity = data.WaveSensitivity, VisualOpacity = data.VisualOpacity, IsGlowMode = data.IsGlowMode, GlowIntensity = data.GlowIntensity, CircleRadius = data.CircleRadius };
+
+                        // 쉬운 설정 항목이 없는 파일(이 기능 전의 파일)은 모드별 상세 값을 바꿔 둔 사람인지로 정한다(모바일 loadEasySettings).
+                        // 모드 설정을 읽은 뒤라야 한다.
+                        EasySettings = data.EasySettings ?? DefaultEasySettingsFor(WaveMode, PadMode, CircleMode, OutlineMode);
 
                         int maxRate = GetMonitorRefreshRate();
                         if (TargetFps > maxRate) TargetFps = maxRate;
@@ -384,6 +416,7 @@ namespace SoundVisualizer
                     SoundTypes = WriteSoundTypes(SoundTypes),
                     ClassifyAdvanced = ClassifyAdvanced,
                     TutorialSeen = TutorialSeen,
+                    EasySettings = EasySettings,
 
                     WaveMode = WaveMode,
                     PadMode = PadMode,
@@ -448,6 +481,15 @@ namespace SoundVisualizer
         /// 모바일은 정한 값을 곧바로 저장하지만 PC 는 저장할 때마다 모든 항목을 쓰므로, 다음 저장에서 함께 남는다.
         /// </summary>
         private static bool DefaultClassifyAdvanced(IReadOnlyDictionary<string, string> soundTypes) => soundTypes.Count > 0;
+
+        /// <summary>
+        /// 쉬운 설정을 저장한 적이 없을 때의 값(모바일 loadEasySettings). 네 모드의 설정이 모두 처음 값이면(손대지 않았으면) 쉬운 설정으로,
+        /// 하나라도 바꿨으면 손에 익은 자세한 설정으로 연다. 표현 모드·색·표시처럼 쉬운 설정에도 보이는 값과, 최대 프레임·단축키처럼
+        /// 모드 카드 밖의 값은 따지지 않는다(모바일과 같다). 모바일은 정한 값을 곧바로 저장하지만 PC 는 저장할 때마다 모든 항목을 쓰므로
+        /// 다음 저장에서 함께 남는다. 그래서 쉬운 설정에서 크기를 바꾼 사람이 다음에 열 때 자세한 설정으로 바뀌는 일이 없다.
+        /// </summary>
+        private static bool DefaultEasySettingsFor(params VisualModeSettings[] modes) =>
+            DefaultEasySettings && modes.All(mode => mode.HasDefaultValues());
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern IntPtr GetDC(IntPtr hWnd);
@@ -519,6 +561,9 @@ namespace SoundVisualizer
 
             // 튜토리얼을 본 적이 있는지. 예전 설정 파일에는 없어 null 로 읽힌다(그때는 본 것으로 친다).
             public bool? TutorialSeen { get; set; }
+
+            // 설정 탭을 쉬운 설정으로 열지. 예전 설정 파일에는 없어 null 로 읽힌다(그때는 모드 설정을 보고 정한다).
+            public bool? EasySettings { get; set; }
 
             public VisualModeSettings WaveMode { get; set; } = new VisualModeSettings();
             public VisualModeSettings PadMode { get; set; } = new VisualModeSettings();

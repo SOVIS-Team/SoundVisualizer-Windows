@@ -82,6 +82,45 @@ public class LicenseNoticesTests
     }
 
     [Fact]
+    public void 앱에_넣은_Silero_VAD_는_고정한_해시와_안드로이드와_같은_MIT_전문을_적는다()
+    {
+        // 안드로이드 NOTICE 의 "8. Silero VAD" 와 같은 글이어야 한다(#422). 줄을 바꾸지 않고 그대로 옮겼다.
+        string mit = string.Join("\n",
+            "MIT License",
+            "Copyright (c) 2020-present Silero Team",
+            "",
+            "Permission is hereby granted, free of charge, to any person obtaining a copy",
+            "of this software and associated documentation files (the \"Software\"), to deal",
+            "in the Software without restriction, including without limitation the rights",
+            "to use, copy, modify, merge, publish, distribute, sublicense, and/or sell",
+            "copies of the Software, and to permit persons to whom the Software is",
+            "furnished to do so, subject to the following conditions:",
+            "",
+            "The above copyright notice and this permission notice shall be included in all",
+            "copies or substantial portions of the Software.",
+            "",
+            "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR",
+            "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,",
+            "FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE",
+            "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER",
+            "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,",
+            "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE",
+            "SOFTWARE.");
+        string thirdParty = Lf(LicenseNotices.Read(LicenseNotices.Documents[0]));
+
+        Assert.Contains(mit, thirdParty, StringComparison.Ordinal);
+        Assert.All(
+            new[]
+            {
+                "SoundVisualizer/AIModel/silero_vad.onnx",
+                "v6.2.3, commit 5cd7945676eb32225748052e2e6a0580e4686a08",
+                "https://github.com/snakers4/silero-vad",
+                SoundVisualizer.Ai.SileroModelFile.Onnx.Sha256,
+            },
+            phrase => Assert.Contains(phrase, thirdParty, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void 온톨로지의_라이선스를_데이터셋의_CC_BY_4_0_으로_적지_않는다()
     {
         // 온톨로지는 CC BY-SA 4.0, 데이터셋은 CC BY 4.0 이다. 안드로이드의 예전 고지는 온톨로지를 CC BY 4.0 이라고 적었다(#342).
