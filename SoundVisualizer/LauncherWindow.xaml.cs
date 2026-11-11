@@ -460,6 +460,7 @@ namespace SoundVisualizer
                     _currentlyHeldKeys.Clear();
                     _maxKeysInCurrentBinding.Clear();
                     LoadSettingsToUI();
+                    SyncOverlayEditPanel(); // 편집 패널의 단축키 이름
                 }
                 e.Handled = true;
             }
@@ -513,6 +514,7 @@ namespace SoundVisualizer
             }
 
             AppSettings.Save();
+            SyncOverlayEditPanel();
         }
 
         // 선택지 칸(ChoiceChipList)은 이 앱에 있는 컨트롤이라 XAML 이 이벤트를 실행 중에 이름으로 잇는다. 그때는 인자 형식이
@@ -552,6 +554,7 @@ namespace SoundVisualizer
 
                     LoadSettingsToUI();
                     AppSettings.Save();
+                    SyncOverlayEditPanel();
                 }
             }
         }
@@ -568,6 +571,7 @@ namespace SoundVisualizer
             LoadSettingsToUI();
             _isInitializing = false;
             AppSettings.Save();
+            SyncOverlayEditPanel();
         }
 
         private void BtnResetPad_Click(object sender, RoutedEventArgs e)
@@ -578,6 +582,7 @@ namespace SoundVisualizer
             LoadSettingsToUI();
             _isInitializing = false;
             AppSettings.Save();
+            SyncOverlayEditPanel();
         }
 
         private void BtnResetCircle_Click(object sender, RoutedEventArgs e)
@@ -588,6 +593,7 @@ namespace SoundVisualizer
             LoadSettingsToUI();
             _isInitializing = false;
             AppSettings.Save();
+            SyncOverlayEditPanel();
         }
 
         private void BtnResetOutline_Click(object sender, RoutedEventArgs e)
@@ -598,6 +604,7 @@ namespace SoundVisualizer
             LoadSettingsToUI();
             _isInitializing = false;
             AppSettings.Save();
+            SyncOverlayEditPanel();
         }
 
         private void BtnResetSoundClassification_Click(object sender, RoutedEventArgs e)
@@ -613,6 +620,7 @@ namespace SoundVisualizer
             LoadSettingsToUI();
             _isInitializing = false;
             AppSettings.Save();
+            SyncOverlayEditPanel();
         }
 
         private void BtnReset_Click(object sender, RoutedEventArgs e)
@@ -628,6 +636,7 @@ namespace SoundVisualizer
             AppSettings.SaveNow();
 
             _isInitializing = false;
+            SyncOverlayEditPanel();
         }
 
         private void Window_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -677,6 +686,7 @@ namespace SoundVisualizer
                             ChipsSoundMode.SelectedIndex = newSoundMode;
 
                             _isInitializing = wasInitializing;
+                            SyncOverlayEditPanel();
                         }
                     }
                 }

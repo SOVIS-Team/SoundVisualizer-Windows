@@ -52,13 +52,17 @@ namespace SoundVisualizer
             UpdateNotices();
         }
 
-        /// <summary>쉬운 설정에서 값을 바꿨다(이미 AppSettings 에 쓰고 저장을 예약했다). 자세한 설정의 칸과 소리 탭, 홈 안내를 맞춘다.</summary>
+        /// <summary>
+        /// 쉬운 설정에서 값을 바꿨다(이미 AppSettings 에 쓰고 저장을 예약했다). 자세한 설정의 칸과 소리 탭, 홈 안내, 열려 있는 오버레이
+        /// 편집 패널을 맞춘다.
+        /// </summary>
         private void EasyView_SettingsChanged(object? sender, EventArgs e)
         {
             bool wasInitializing = _isInitializing;
             _isInitializing = true; // 칸을 맞추며 생기는 바뀜 알림이 다시 저장하지 않게
             LoadSettingsToUI();
             _isInitializing = wasInitializing;
+            SyncOverlayEditPanel();
         }
 
         /// <summary>

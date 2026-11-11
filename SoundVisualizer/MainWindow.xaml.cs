@@ -128,6 +128,9 @@ namespace SoundVisualizer
             LanguagePicker.Fill(CmbLanguage);
             ColorButtonNames.Apply(EditPanelAmbientColorBtn, EditPanelSpeechColorBtn, EditPanelDangerColorBtn);
             Loc.Instance.LanguageChanged += OnLanguageChanged;
+            // 편집 패널에서 끌던 것을 놓으면, 끄는 동안 미뤄 둔 다시 채우기를 한다(ReloadEditPanelIfOpen). 손잡이가 처리한 놓기도 받는다.
+            AddHandler(System.Windows.Input.Mouse.LostMouseCaptureEvent,
+                new System.Windows.Input.MouseEventHandler(OnEditPanelMouseReleased), handledEventsToo: true);
             LoadSettingsToEditPanel(); // UI 초기화 직후 설정값을 미리 반영하여, 지연된 레이아웃 패스에서 기본값(50)이 이벤트를 발생시켜도 올바른 값이 유지되도록 함
             _isUpdatingEditPanelSliders = false;
             ApplyClickThroughMagic();
@@ -186,6 +189,7 @@ namespace SoundVisualizer
                         AppSettings.SoundMode = autoSoundMode;
                         AppSettings.Save();
                         OnSettingsChangedFromHotkey?.Invoke(); // UI 업데이트 트리거
+                        ReloadEditPanelIfOpen(); // 편집 패널이 열려 있으면 사운드 모드 칸도 맞춘다
                     }
                 });
             };
@@ -825,6 +829,8 @@ namespace SoundVisualizer
         private void ToggleEditMode(bool enable)
         {
             _isEditMode = enable;
+            // 열면 아래에서 스스로 채우고, 닫으면 채울 것이 없다. 끄는 동안 미뤄 둔 다시 채우기는 버린다.
+            _editPanelSync.Clear();
             var hwnd = new WindowInteropHelper(this).Handle;
             int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
 
@@ -860,6 +866,45 @@ namespace SoundVisualizer
         }
 
         private bool _isUpdatingEditPanelSliders = true;
+
+        // 패널 밖(런처, 출력 장치)에서 설정이 바뀌었을 때 패널을 언제 다시 채울지 정한다. 끄는 중이면 놓을 때까지 미룬다.
+        private readonly EditPanelSync _editPanelSync = new();
+
+        /// <summary>
+        /// 설정이 편집 패널 밖에서 바뀌었다(런처의 자세한 설정·쉬운 설정·색·초기화·단축키, 출력 장치의 채널 수). 패널이 열려 있으면 칸을
+        /// 새 값으로 다시 채운다. 그대로 두면 칸이 옛 값을 보이고, 그 슬라이더를 움직이면 옛 값이 새 모드에 쓰인다.
+        ///
+        /// 사용자가 패널에서 무언가를 끌고 있으면 칸을 건드리지 않고 놓은 뒤에 채운다(<see cref="OnEditPanelMouseReleased"/>).
+        /// 채우는 동안에는 칸의 처리기가 설정에 다시 쓰지 않으므로(_isUpdatingEditPanelSliders) 저장도, 런처로 되돌아가는 알림도 없다.
+        /// </summary>
+        internal void ReloadEditPanelIfOpen()
+        {
+            // 패널이 스스로 채우는 중이면 다시 들어오지 않는다. 채우는 쪽이 같은 설정을 읽고 있다.
+            if (_isUpdatingEditPanelSliders) return;
+            if (!_editPanelSync.Request(_isEditMode, IsDraggingInEditPanel)) return;
+            LoadSettingsToEditPanel();
+            UpdateGuidelinePositions();
+        }
+
+        /// <summary>
+        /// 사용자가 편집 패널에서 무언가를 끌고 있는지. 슬라이더 손잡이, 크기 손잡이, 가이드라인(GuidelineCanvas), 펼친 언어 목록은 모두
+        /// 그동안 마우스를 잡아 둔다.
+        /// </summary>
+        private bool IsDraggingInEditPanel => IsMouseCaptureWithin;
+
+        /// <summary>이 창의 요소가 잡았던 마우스를 놓았다. 끄는 동안 미뤄 둔 다시 채우기가 있으면 놓는 처리가 끝난 뒤에 한다.</summary>
+        private void OnEditPanelMouseReleased(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (!_editPanelSync.IsPending) return;
+            // 지금은 놓는 중이다(슬라이더가 끌기를 마무리하고 가이드라인이 저장하기 전이다). 그 처리가 끝난 뒤에 채운다.
+            Dispatcher.InvokeAsync(() =>
+            {
+                if (_isClosed || _isUpdatingEditPanelSliders) return;
+                if (!_editPanelSync.Released(_isEditMode, IsDraggingInEditPanel)) return;
+                LoadSettingsToEditPanel();
+                UpdateGuidelinePositions();
+            });
+        }
 
         private void LoadSettingsToEditPanel()
         {
@@ -900,10 +945,11 @@ namespace SoundVisualizer
             EditPanelSpeechColorBtn.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(AppSettings.ColorSpeech));
             EditPanelDangerColorBtn.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(AppSettings.ColorDanger));
 
-            // 단축키 설정 바인딩
-            BtnEditPanelVisualHotkey.Content = GetKeysName(AppSettings.VisualModeKeyBind);
-            BtnEditPanelSoundModeHotkey.Content = GetKeysName(AppSettings.StereoUpmixKeyBind);
-            BtnEditPanelEditHotkey.Content = GetKeysName(AppSettings.EditModeKeyBind);
+            // 단축키 설정 바인딩. 입력을 기다리는 버튼의 안내 글자는 그대로 둔다(OnLanguageChanged 와 같다). 기다리는 중에 런처에서
+            // 설정이 바뀌어 패널을 다시 채워도, 버튼이 옛 키 이름으로 돌아가 "기다리는 중"이 보이지 않게 되지 않는다.
+            if (_bindingTarget != "Visual") BtnEditPanelVisualHotkey.Content = GetKeysName(AppSettings.VisualModeKeyBind);
+            if (_bindingTarget != "Sound") BtnEditPanelSoundModeHotkey.Content = GetKeysName(AppSettings.StereoUpmixKeyBind);
+            if (_bindingTarget != "Edit") BtnEditPanelEditHotkey.Content = GetKeysName(AppSettings.EditModeKeyBind);
             EditPanelHotkeyText.Text = GetKeysName(AppSettings.EditModeKeyBind);
 
             // 고급 설정 바인딩
