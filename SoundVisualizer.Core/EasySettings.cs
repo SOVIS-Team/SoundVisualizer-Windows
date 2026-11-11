@@ -45,13 +45,6 @@ namespace SoundVisualizer
     /// </summary>
     public static class EasySizes
     {
-        /// <summary>
-        /// 슬라이더 값이 단계 값과 이만큼 안쪽이면 같은 것으로 본다. 자세한 설정의 슬라이더는 끌면 소수 값(49.8)이 되지만 화면에는
-        /// 정수("50")로 보인다. 안드로이드처럼 꼭 같은 값만 치면, 자세한 설정에서 50 으로 보이는데 쉬운 설정은 "자세한 설정에서 맞춘
-        /// 크기"라고 하는 엇갈림이 생긴다. 그래서 화면에 같은 정수로 보이는 값은 같은 단계로 본다.
-        /// </summary>
-        public const double Tolerance = 0.5;
-
         private static readonly VisualModeSettings Defaults = new();
 
         /// <summary>화면에 놓는 차례(작게, 보통, 크게).</summary>
@@ -117,7 +110,13 @@ namespace SoundVisualizer
             return EasySizeControl.Size;
         }
 
-        private static bool Near(double value, double step) => Math.Abs(value - step) < Tolerance;
+        /// <summary>
+        /// 슬라이더 값이 단계 값과 같은 것으로 볼 만한지. 자세한 설정의 슬라이더는 끌면 소수 값(49.8)이 되지만 화면에는 정수("50")로 보인다.
+        /// 안드로이드처럼 꼭 같은 값만 치면, 자세한 설정에서 50 으로 보이는데 쉬운 설정은 "자세한 설정에서 맞춘 크기"라고 하는 엇갈림이
+        /// 생긴다. 그래서 슬라이더 줄에 단계의 수로 보이는 값을 그 단계로 본다. 슬라이더가 글자를 만드는 바로 그 함수(<see cref="ValueText"/>)로
+        /// 견주므로 꼭 x.5 인 값에서도 엇갈리지 않는다. 예전에는 차이가 0.5 보다 작은지로 따져, "50" 으로 보이는 49.5 가 보통이 아니었다.
+        /// </summary>
+        private static bool Near(double value, double step) => ValueText.ShowsSameNumber(value, step);
     }
 
     /// <summary>쉬운 설정에서 화면에 보이지 않는 이름(화면 읽어주기)을 짓는 규칙.</summary>
