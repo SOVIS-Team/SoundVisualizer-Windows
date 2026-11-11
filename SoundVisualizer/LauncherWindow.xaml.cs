@@ -696,7 +696,7 @@ namespace SoundVisualizer
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "https://github.com/amophi/SoundVisualizer",
+                    FileName = "https://github.com/SOVIS-Team/SoundVisualizer-Windows",
                     UseShellExecute = true
                 });
             }

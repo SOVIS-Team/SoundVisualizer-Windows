@@ -12,8 +12,8 @@ namespace SoundVisualizer.Help
     /// </summary>
     public static class ReportLink
     {
-        /// <summary>새 이슈 화면. PC 판 저장소다(안드로이드 판과 다르다).</summary>
-        public const string IssuesUrl = "https://github.com/amophi/SoundVisualizer/issues/new";
+        /// <summary>새 이슈 화면. PC 판 저장소다(안드로이드 판과 다르다). 2026-11 에 SOVIS-Team 조직으로 옮겼다(옛 amophi 주소는 넘겨 준다).</summary>
+        public const string IssuesUrl = "https://github.com/SOVIS-Team/SoundVisualizer-Windows/issues/new";
 
         /// <summary>메일 제보를 받는 곳. 안드로이드 판과 같은 주소다.</summary>
         public const string ReportEmail = "nawwhod@gmail.com";
