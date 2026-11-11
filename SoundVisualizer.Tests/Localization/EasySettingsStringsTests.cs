@@ -101,6 +101,29 @@ public class EasySettingsStringsTests
     }
 
     [Fact]
+    public void 아랍어의_사람_소리_줄은_같은_말을_두_번_읽지_않는다()
+    {
+        // 종류 이름에만 관사가 없으면 스위치 이름(إظهار الأصوات البشرية) 안에서 찾지 못해 "사람 소리, 사람 소리 표시" 꼴로 겹쳐 읽힌다.
+        // 환경음(الأصوات المحيطة)처럼 관사를 붙인 이름이어야 스위치 이름 하나로 읽힌다.
+        Assert.Equal(Get("ar", "settings.show_speech"),
+            EasyNames.TypeRow(Get("ar", "sounds.type.speech"), Get("ar", "settings.show_speech"), Get("ar", "easy.name_pair")));
+    }
+
+    [Theory]
+    [MemberData(nameof(Codes))]
+    public void 튜토리얼_범례의_종류_이름과_예시는_같은_글자가_아니다(string code)
+    {
+        // 범례는 이름과 예시를 나란히 보인다("사람 소리  사람 목소리"). 종류 이름을 바꾸면서 일본어·인도네시아어·태국어·터키어는
+        // 새 이름이 원래 예시와 같은 낱말이 되어 "人の声  人の声" 처럼 겹쳤다. 이름을 바꿀 때는 예시도 함께 본다.
+        foreach (var type in new[] { "ambient", "speech", "danger" })
+        {
+            Assert.False(
+                string.Equals(Get(code, "sounds.type." + type).Trim(), Get(code, "tutorial.type." + type + "_examples").Trim(), StringComparison.OrdinalIgnoreCase),
+                $"{code}: {type} 의 이름과 예시가 같습니다.");
+        }
+    }
+
+    [Fact]
     public void 읽는_이름은_들어_있으면_자세한_설정의_스위치_이름_그대로이고_없으면_앞에_붙인다()
     {
         Assert.Equal(Get("ko", "settings.show_danger"),
