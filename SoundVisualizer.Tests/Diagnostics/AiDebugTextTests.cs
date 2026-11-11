@@ -204,40 +204,58 @@ public class AiDebugTextTests
     }
 
     [Fact]
-    public void 말소리_미리보기의_첫_줄은_기본_종류가_대화음인_모든_이름에서_58자_안에_든다()
+    public void 말소리_미리보기의_첫_줄은_어느_이름이_실려도_58자_안에_든다()
     {
         // 미리보기의 종류 칸은 "SPEECH ~PREVIEW"(15자)로 정규 결과의 가장 긴 "AMBIENT"(7자)보다 여덟 자 길다. 위의 시험은 정규 결과만 본다.
-        // 미리보기는 사용자 지정이 하나도 없을 때만 생기므로(AiClassificationStage.SpeechOnset) 기본 매핑으로 대화음인 이름을 모두 넣어 본다.
-        // 지금 가장 긴 "Hubbub, speech noise, speech babble"(35자)이 꼭 58자라 여유가 없다. 표시를 한 글자라도 늘리면 여기서 걸린다.
-        //
-        // 이 시험이 지키지 않는 경우: 미리보기의 이름은 그 프레임의 1위 이름이고 종류는 상위 3개의 투표라, 1위가 환경음 이름이어도
-        // 2·3위의 대화음이 합쳐 이기면 그 환경음 이름이 실린다. 35자를 넘는 이름 셋("Livestock, farm animals, working animals",
-        // "Bird vocalization, bird call, bird song", "Wind instrument, woodwind instrument")이 그렇게 실리면 59~63자가 된다.
-        // 줄을 줄이려면 두 판(모바일 AiDebugText)이 함께 정해야 해서 여기서는 고치지 않았다. PC HUD 는 폭을 내용에 맞추므로 꺾이지 않는다.
+        // 미리보기의 이름은 그 프레임의 1위 이름이고 종류는 상위 3개의 투표라, 1위가 환경음 이름이어도 2·3위의 사람 소리가 합쳐 이기면
+        // 그 환경음 이름이 실린다. 그래서 521개 이름을 모두 넣어 본다. 35자를 넘는 이름은 끝을 말줄임표로 줄여 한 줄에 맞춘다.
+        // 줄이지 않으면 "Livestock, farm animals, working animals" 가 63자가 되어 폰에서 첫 줄이 두 줄로 꺾인다(모바일 #165, #461).
         var classes = AiTestData.ClassMap;
-        var speechNames = Enumerable.Range(0, classes.Count)
-            .Where(i => classes.DefaultCoarse(i) == SoundType.Speech)
-            .Select(i => classes[i])
-            .ToArray();
-        Assert.Contains("Speech", speechNames);
-        Assert.Contains("Hubbub, speech noise, speech babble", speechNames);
-
         var parent = Result(SoundType.Ambient, "Music", 0.6f);
-        int longest = 0;
-        foreach (string name in speechNames)
+        int longest = 0, shortened = 0;
+        for (int i = 0; i < classes.Count; i++)
         {
+            string name = classes[i];
             var lines = Format(parent.AsSpeechPreview(name, 0.99f, timestampMs: 1_100L));
             Assert.Equal("SPEECH" + AiDebugText.PreviewMarker, lines.Coarse);
             int header = HeaderColumns(lines);
             Assert.True(header <= AiDebugText.HudMaxColumns, $"{header}: {lines.Coarse} ● {lines.Label} {lines.Confidence}");
             longest = Math.Max(longest, header);
+            if (lines.Label != name)
+            {
+                shortened++;
+                Assert.EndsWith(AiDebugText.Ellipsis, lines.Label);
+                Assert.StartsWith(lines.Label[..^AiDebugText.Ellipsis.Length], name);
+            }
         }
         Assert.Equal(AiDebugText.HudMaxColumns, longest);
+        Assert.True(shortened > 0, "줄인 이름이 하나도 없다");
+        // 기본 종류가 사람 소리인 이름은 가장 긴 것(35자)도 줄지 않는다. 미리보기에 가장 자주 실리는 이름들이다.
+        Assert.Equal("Hubbub, speech noise, speech babble",
+            Format(parent.AsSpeechPreview("Hubbub, speech noise, speech babble", 0.99f, timestampMs: 1_100L)).Label);
+        Assert.Equal("Livestock, farm animals, working a" + AiDebugText.Ellipsis,
+            Format(parent.AsSpeechPreview("Livestock, farm animals, working animals", 0.99f, timestampMs: 1_100L)).Label);
+    }
+
+    [Fact]
+    public void 정규_결과의_첫_줄은_어느_이름도_줄이지_않는다()
+    {
+        // 정규 결과는 종류 칸이 짧아 가장 긴 이름(40자)도 한 줄에 든다. 채점할 때 보는 이름이 잘리면 안 된다.
+        var classes = AiTestData.ClassMap;
+        foreach (var type in new[] { SoundType.Ambient, SoundType.Speech, SoundType.Danger })
+        {
+            for (int i = 0; i < classes.Count; i++)
+            {
+                var lines = Format(Result(type, classes[i], 0.99f));
+                Assert.Equal(classes[i], lines.Label);
+                Assert.True(HeaderColumns(lines) <= AiDebugText.HudMaxColumns);
+            }
+        }
     }
 
     /// <summary>첫 줄의 글자 수. 오버레이가 "종류 ● 이름 확신도" 로 붙인다. 점과 그 양옆 여백을 세 칸으로 센다(모바일 6dp + 8dp + 6dp).</summary>
     private static int HeaderColumns(AiDebugLines lines) =>
-        lines.Coarse.Length + 3 + lines.Label.Length + 1 + lines.Confidence.Length;
+        lines.Coarse.Length + AiDebugText.HeaderDotColumns + lines.Label.Length + 1 + lines.Confidence.Length;
 
     [Fact]
     public void 같은_입력이면_같은_줄로_본다()
