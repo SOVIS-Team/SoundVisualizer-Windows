@@ -8,7 +8,7 @@
 
 <img width="1024" height="818" alt="SoundVisualizer" src="https://github.com/user-attachments/assets/b11aa5b3-c995-4e36-8ff6-3e2f2c2b2388" />
 
-<img width="1024" alt="SoundVisualizer overlay: ambient, speech, danger, sound from the left, and sound from the right" src="docs/images/readme_screens.png" />
+<img width="1024" alt="SoundVisualizer overlay: ambient, human sounds, danger, sound from the left, and sound from the right" src="docs/images/readme_screens.png" />
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![WPF](https://img.shields.io/badge/WPF-blue?style=for-the-badge&logo=windows)](https://docs.microsoft.com/en-us/dotnet/desktop/wpf/)
@@ -23,7 +23,7 @@
 <br/>
 
 > **SoundVisualizer** is a desktop application that captures real-time system audio and translates its direction, intensity, and meaning into a graphical overlay. 
-Going beyond simple waveform rendering, it integrates an AI sound classifier powered by **YAMNet** and **ONNX Runtime** to instantly identify the type of sound playing (ambient, speech, danger) and provide adaptive visual feedback.
+Going beyond simple waveform rendering, it integrates an AI sound classifier powered by **YAMNet** and **ONNX Runtime** to instantly identify the type of sound playing (ambient, human sounds, danger) and provide adaptive visual feedback.
 
 > 📱 There is also an Android version: [SoundVisualizer for Android](https://github.com/bibibic76/SoundVisualizer).
 
@@ -71,14 +71,14 @@ Modify settings instantly while in a full-screen application or game without min
 - With stereo output, sound common to both channels is drawn at the top and only the difference between left and right goes to the sides, so a centred sound no longer looks like sound coming from both sides.
 
 ### 4. Real-Time AI Sound Classification (ONNX & YAMNet)
-- **3-Class Detection**: Analyzes all incoming audio into `Ambient`, `Speech`, and `Danger` categories. Each category triggers independent, customizable UI colors and dynamic opacity changes.
+- **3-Class Detection**: Analyzes all incoming audio into `Ambient`, `Human sounds`, and `Danger` categories. Each category triggers independent, customizable UI colors and dynamic opacity changes.
 - **Warning cues**: Sirens, alarms, explosions, fireworks and similar warning sounds count as `Danger` even when they are only among the model's top five candidates (at 5% or more), so music or game audio can't drown them out. Gunshot labels are not promoted this way, to avoid false alarms.
-- **Stable colors**: `Danger` appears on the first qualifying result; `Speech` and `Ambient` need two in a row, so the color doesn't flicker. The AI pauses while it's quiet and resumes as soon as sound returns.
+- **Stable colors**: `Danger` appears on the first qualifying result; `Human sounds` and `Ambient` need two in a row, so the color doesn't flicker. The AI pauses while it's quiet and resumes as soon as sound returns.
 - **Every channel counts**: On 5.1/7.1 systems, the AI hears the rear and side channels too, not just the front.
 - **Late danger**: If a `Danger` result arrives a moment after the sound, the overlay still draws that sound at the size it had, even when its earlier type was hidden.
 
 ### 5. Choose How Each Sound Counts (Sounds Tab)
-- Browse the 521 sounds the AI knows, grouped like the Android version, and choose whether each group (or, in advanced mode, each sound) counts as `Ambient`, `Speech`, or `Danger`.
+- Browse the 521 sounds the AI knows, grouped like the Android version, and choose whether each group (or, in advanced mode, each sound) counts as `Ambient`, `Human sounds`, or `Danger`.
 - Search by name, filter by type or by the sounds you changed, and reset everything in one step. The overlay's AI follows your changes immediately.
 
 ### 6. Help, Notices, and Tray Icon

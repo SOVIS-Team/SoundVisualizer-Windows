@@ -7,7 +7,7 @@ namespace SoundVisualizer.Tests.Ai;
 
 /// <summary>
 /// C# 라벨 목록과 규칙이 모바일과 같은 이름을 같은 종류로 묶는지. 모바일 저장소를 읽지 않도록, 모바일 규칙을 실제 521개 이름에
-/// 적용한 결과(위협음 37, 대화음 33, 환경음 451 — 모바일 tools/ai_reference/mapper.py 결과와도 같다)를 여기에 그대로 적어 둔다.
+/// 적용한 결과(위협음 37, 사람 소리 36, 환경음 448 — 모바일 #421 뒤 tools/ai_reference/mapper.py 결과와도 같다)를 여기에 그대로 적어 둔다.
 /// 규칙을 바꾸면 이 목록도 모바일과 함께 바꾼다.
 /// </summary>
 public class YamnetLabelListTests
@@ -32,19 +32,20 @@ public class YamnetLabelListTests
         "Children shouting", "Screaming", "Whispering", "Laughter", "Baby laughter",
         "Giggle", "Snicker", "Belly laugh", "Chuckle, chortle", "Crying, sobbing",
         "Baby cry, infant cry", "Whimper", "Wail, moan", "Singing", "Choir",
-        "Child singing", "Synthetic singing", "Rapping", "Cheering", "Chatter",
-        "Crowd", "Hubbub, speech noise, speech babble", "Children playing",
+        "Child singing", "Synthetic singing", "Rapping", "Breathing", "Cough",
+        "Sneeze", "Cheering", "Chatter", "Crowd", "Hubbub, speech noise, speech babble",
+        "Children playing",
     };
 
     private static List<string> NamesMappedTo(SoundType type) =>
         AiTestData.ClassMap.Where(name => YamnetThreeClassMapper.MapDisplayNameToCoarse(name) == type).ToList();
 
     [Fact]
-    public void 실제_클래스는_위협음_37_대화음_33_환경음_451로_나뉜다()
+    public void 실제_클래스는_위협음_37_사람_소리_36_환경음_448로_나뉜다()
     {
         Assert.Equal(37, NamesMappedTo(SoundType.Danger).Count);
-        Assert.Equal(33, NamesMappedTo(SoundType.Speech).Count);
-        Assert.Equal(451, NamesMappedTo(SoundType.Ambient).Count);
+        Assert.Equal(36, NamesMappedTo(SoundType.Speech).Count);
+        Assert.Equal(448, NamesMappedTo(SoundType.Ambient).Count);
     }
 
     [Fact]
@@ -54,7 +55,7 @@ public class YamnetLabelListTests
     }
 
     [Fact]
-    public void 대화음으로_묶이는_이름은_모바일과_같다()
+    public void 사람_소리로_묶이는_이름은_모바일과_같다()
     {
         Assert.Equal(ExpectedSpeech, NamesMappedTo(SoundType.Speech));
     }
@@ -66,7 +67,7 @@ public class YamnetLabelListTests
         var lowered = AiTestData.ClassMap.Select(name => name.ToLowerInvariant()).ToHashSet(StringComparer.Ordinal);
 
         Assert.Equal(9, YamnetThreeClassMapper.AttentionLabels.Count);
-        Assert.Equal(11, YamnetThreeClassMapper.HumanVocalizationLabels.Count);
+        Assert.Equal(14, YamnetThreeClassMapper.HumanVocalizationLabels.Count);
         Assert.Equal(8, YamnetSafetyCueDecision.ApprovedAttentionCueLabels.Count);
         Assert.All(
             YamnetThreeClassMapper.AttentionLabels
