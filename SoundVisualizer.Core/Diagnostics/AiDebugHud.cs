@@ -9,6 +9,8 @@ namespace SoundVisualizer.Diagnostics
     /// 오버레이 하나의 개발자 모드 HUD 와 결과 기록을 언제 돌리고 멈출지 정한다(모바일 AiDebugOverlay 의 produceState 와 DisposableEffect).
     ///
     /// - HUD 는 오버레이가 열려 있고 개발자 모드가 켜져 있는 동안만 <see cref="PollIntervalMs"/> 마다 읽는다(<see cref="IsPolling"/>).
+    ///   그동안 AI 가 결과를 게시하면 타이머를 기다리지 않고 한 번 더 읽는다(<see cref="AiHudRefresh"/>). 타이머보다 짧게 사는 결과
+    ///   (말소리 미리보기)도 화면과 기록에 남는다.
     /// - 기록은 거기에 기록 스위치까지 켜져 있을 때만 돈다(<see cref="IsRecording"/>). 셋 가운데 하나라도 바뀌면 그 자리에서 켜고 끈다.
     ///   개발자 모드를 꺼도 기록 스위치의 값은 남아, 다시 켜면 새 파일에 기록한다(모바일과 같다).
     /// - 읽을 때마다 결과를 기록기에 넘긴다. 같은 결과를 거듭 넘겨도 기록기가 한 줄만 남긴다(<see cref="AiDebugLogWriter"/>).

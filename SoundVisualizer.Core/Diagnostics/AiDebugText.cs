@@ -114,17 +114,34 @@ namespace SoundVisualizer.Diagnostics
                 top5[i] = string.Create(CultureInfo.InvariantCulture, $"{i + 1} {FitName(hit.Name)} {TwoDecimals(hit.Probability)}");
             }
 
+            string coarse = result.Coarse.ToLabel().ToUpperInvariant() + (result.SpeechPreview ? PreviewMarker : "");
+            string confidence = TwoDecimals(result.Confidence);
             return new AiDebugLines(
                 ColorType: result.Coarse,
-                Coarse: result.Coarse.ToLabel().ToUpperInvariant() + (result.SpeechPreview ? PreviewMarker : ""),
+                Coarse: coarse,
                 // 확정된 이름이 아직 없으면 빈 문자열이 온다. 임계값을 한 번도 넘지 못한 상태다.
-                Label: result.Display.Length == 0 ? "(none)" : result.Display,
-                Confidence: TwoDecimals(result.Confidence),
+                Label: FitHeaderLabel(result.Display.Length == 0 ? "(none)" : result.Display, coarse, confidence),
+                Confidence: confidence,
                 Detail: $"thr {YesNo(result.MeetsThreshold)}   age {AgeText(result.TimestampMs, nowMs)}",
                 // 투표와 따로, YAMNet 의 강한 위험 단서로 위협음을 지켰는지.
                 Verdict: $"cue {YesNo(result.DangerCuePromoted)}",
                 Timing: $"{levelText}   shown {YesNo(shown)}   {TimingOf(result)}",
                 Top5: top5);
+        }
+
+        /// <summary>첫 줄에서 종류와 이름 사이의 점이 차지하는 칸 수. 점과 그 양옆 여백이다(모바일 6dp + 8dp + 6dp).</summary>
+        public const int HeaderDotColumns = 3;
+
+        /// <summary>
+        /// 첫 줄("종류 ● 이름 확신도")이 <see cref="HudMaxColumns"/> 를 넘지 않게 이름을 줄인다. 정규 결과는 가장 긴 이름(40자)도 들어가므로
+        /// 줄지 않는다. 말소리 미리보기는 종류 칸이 "SPEECH ~PREVIEW" 로 여덟 자 길고, 이름은 그 프레임의 1위 이름이라(종류는 상위 3개의
+        /// 투표) 긴 환경음 이름이 실릴 수 있다. 그때 35자를 넘는 이름만 끝을 말줄임표로 줄인다. 그대로 두면 폰에서 첫 줄이 두 줄로 꺾여
+        /// HUD 높이가 흔들린다(#165). 기록(CSV)에는 온전한 이름이 남는다.
+        /// </summary>
+        private static string FitHeaderLabel(string label, string coarse, string confidence)
+        {
+            int room = HudMaxColumns - coarse.Length - HeaderDotColumns - 1 - confidence.Length;
+            return label.Length <= room ? label : string.Concat(label.AsSpan(0, room - Ellipsis.Length), Ellipsis);
         }
 
         /// <summary>고정폭 칸에 맞춘 이름. 짧으면 공백으로 채워 확률이 세로 한 열에 선다.</summary>

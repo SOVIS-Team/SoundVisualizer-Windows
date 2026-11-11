@@ -90,8 +90,28 @@ public class AiDebugCsvTests
         Assert.Equal(
             "time_ms,result_ms,age_ms,capture_source,coarse,display,confidence,meets_threshold,danger_cue_promoted," +
             "top1_name,top1_prob,top2_name,top2_prob,top3_name,top3_prob,top4_name,top4_prob,top5_name,top5_prob," +
-            "level,shown,preprocess_ms,yamnet_ms,total_ms,mapping_override_count,mapping_signature",
+            "level,shown,preprocess_ms,yamnet_ms,total_ms,mapping_override_count,mapping_signature,speech_preview",
             AiDebugCsv.Header);
+    }
+
+    [Fact]
+    public void 말소리_미리보기인지는_맨_끝_칸에_적는다()
+    {
+        // 미리보기도 HUD 가 읽은 그대로 한 줄로 남는다. 이 칸이 없으면 화면에만 먼저 보인 대화음이 정규 확정과 섞여 세어진다.
+        // 모바일(#456)과 이름·자리가 같고, 앞의 칸 번호로 읽는 스크립트가 어긋나지 않게 맨 끝에 둔다.
+        Assert.Equal("speech_preview", AiDebugCsv.Columns[^1]);
+
+        var regular = Result(coarse: SoundType.Ambient, display: "Music");
+        var preview = regular.AsSpeechPreview("Speech", 0.9f, timestampMs: 1_100L);
+        var regularCells = Cells(AiDebugCsv.Row(regular, 1_500L, 0.4f, true));
+        var previewCells = Cells(AiDebugCsv.Row(preview, 1_500L, 0.4f, true));
+
+        // 다른 참거짓 칸과 같은 소문자다(Kotlin Boolean.toString).
+        Assert.Equal("false", regularCells[^1]);
+        Assert.Equal("true", previewCells[^1]);
+        Assert.Equal("true", previewCells[Column("speech_preview")]);
+        Assert.Equal("speech", previewCells[Column("coarse")]);
+        Assert.Equal(AiDebugCsv.Columns.Count, previewCells.Count);
     }
 
     [Fact]
@@ -101,7 +121,7 @@ public class AiDebugCsvTests
         Assert.Equal(
             "\"1500\",\"1000\",\"500\",\"Loopback\",\"danger\",\"Gunshot, gunfire\",\"0.54321\",\"true\",\"false\"," +
             "\"Gunshot, gunfire\",\"0.54321\",\"Speech\",\"0.10000\",\"\",\"\",\"\",\"\",\"\",\"\"," +
-            "\"0.40000\",\"true\",\"3.2\",\"41.0\",\"46.2\",\"0\",\"default\"",
+            "\"0.40000\",\"true\",\"3.2\",\"41.0\",\"46.2\",\"0\",\"default\",\"false\"",
             AiDebugCsv.Row(Result(), nowMs: 1_500L, level: 0.4f, shown: true));
     }
 

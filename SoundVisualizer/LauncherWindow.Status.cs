@@ -17,6 +17,9 @@ namespace SoundVisualizer
         private readonly RunStatus _runStatus = new();
         private TrayIcon? _tray;
 
+        // 오버레이가 알려 온 변경(편집 패널, 단축키)을 런처의 칸에 옮기는 중이다. 그동안에는 오버레이에 되돌려 알리지 않는다.
+        private bool _applyingOverlayChange;
+
         // 화면 읽어주기에 마지막으로 알린 안내. 언어만 바뀐 때는 다시 읽지 않는다.
         private HomeNotice _announcedNotice = HomeNotice.None;
         private StopReason? _announcedStop;
@@ -86,7 +89,17 @@ namespace SoundVisualizer
             overlay.OnSettingsChangedFromHotkey = () =>
             {
                 // UI 스레드에서 LoadSettingsToUI 호출 (MainWindow는 이미 UI 스레드에서 이벤트를 발생시킴)
-                LoadSettingsToUI();
+                // 이 변경은 오버레이에서 왔다. 칸을 맞추며 생기는 바뀜 알림(Setting_Changed)이 SyncOverlayEditPanel 로 되돌아가면,
+                // 사용자가 지금 끌고 있는 편집 패널을 런처가 다시 채우게 된다.
+                _applyingOverlayChange = true;
+                try
+                {
+                    LoadSettingsToUI();
+                }
+                finally
+                {
+                    _applyingOverlayChange = false;
+                }
             };
             overlay.AiAvailabilityChanged += (s, available) =>
             {
@@ -122,6 +135,20 @@ namespace SoundVisualizer
         private void StopOverlay() => _overlayWindow?.Close();
 
         /// <summary>
+        /// 런처에서 설정을 바꿨다(자세한 설정, 쉬운 설정, 색, 초기화, 단축키, 출력 장치의 채널 수). 오버레이의 편집 패널(F4)이 열려 있으면
+        /// 그 칸도 새 값으로 맞춘다. 예전에는 반대 방향(오버레이 → 런처)만 맞춰서, 패널을 연 채 런처에서 모드나 크기를 바꾸면 패널이 옛 값을
+        /// 보였고 그 슬라이더를 움직이면 옛 값이 새 모드에 쓰였다.
+        ///
+        /// 런처에서 설정을 쓰고 저장하는 곳은 모두 이것을 부른다(EditPanelSourceTests 가 지킨다). 오버레이가 알려 온 변경을 옮기는 중에는
+        /// 부르지 않는다. 오버레이는 패널이 닫혀 있으면 아무것도 하지 않고, 사용자가 패널에서 무언가를 끌고 있으면 놓은 뒤에 채운다.
+        /// </summary>
+        private void SyncOverlayEditPanel()
+        {
+            if (_applyingOverlayChange) return;
+            _overlayWindow?.ReloadEditPanelIfOpen();
+        }
+
+        /// <summary>
         /// 오버레이가 닫혔거나 시작하지 못했다. 사용자가 끈 게 아니면 홈에 이유를 남기고, 런처를 보고 있지 않으면
         /// Windows 알림으로도 알린다(안드로이드의 "꺼졌습니다" 알림). 게임 중이면 알림이 처음 보는 안내다.
         /// </summary>
@@ -153,7 +180,9 @@ namespace SoundVisualizer
             string aiText = notice switch
             {
                 HomeNotice.AiUnavailable => Loc.Get("notice.ai_unavailable"),
-                HomeNotice.AiUnavailableHidden => Loc.Format("notice.ai_unavailable_hidden", Loc.Get("settings.show_ambient")),
+                // 설정 탭에 지금 보이는 화면의 스위치 이름을 인용한다. 쉬운 설정의 줄에는 "환경음 표시"가 아니라 "환경음"만 적혀 있다.
+                HomeNotice.AiUnavailableHidden => Loc.Format("notice.ai_unavailable_hidden",
+                    Loc.Get(RunStatus.AmbientSwitchLabelKey(AppSettings.EasySettings))),
                 _ => "",
             };
             TxtAiNotice.Text = aiText;

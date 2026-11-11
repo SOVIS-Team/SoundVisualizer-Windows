@@ -78,5 +78,15 @@ namespace SoundVisualizer.Status
             if (IsRunning) return AiAvailable ? HomeNotice.None : showAmbient ? HomeNotice.AiUnavailable : HomeNotice.AiUnavailableHidden;
             return LastUnexpectedStop != null ? HomeNotice.Stopped : HomeNotice.None;
         }
+
+        /// <summary>
+        /// <see cref="HomeNotice.AiUnavailableHidden"/> 안내가 "설정 탭에서 ‘…’ 스위치를 켜세요"라고 인용할 스위치 이름의 문자열 키.
+        /// 설정 탭에 지금 보이는 화면의 스위치에 적힌 글자여야 찾아 누를 수 있다. 자세한 설정의 스위치는 "환경음 표시"
+        /// (settings.show_ambient)이고, 쉬운 설정의 줄에는 종류 이름 "환경음"(sounds.type.ambient)만 적혀 있다. 예전에는 늘 자세한 설정의
+        /// 이름을 인용해, 쉬운 설정을 쓰는 사람은 화면에 없는 이름의 스위치를 찾아야 했다.
+        /// </summary>
+        /// <param name="easySettings">설정 탭이 쉬운 설정 화면인지(<c>AppSettings.EasySettings</c>).</param>
+        public static string AmbientSwitchLabelKey(bool easySettings) =>
+            easySettings ? "sounds.type.ambient" : "settings.show_ambient";
     }
 }

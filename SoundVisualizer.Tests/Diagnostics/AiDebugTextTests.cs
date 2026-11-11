@@ -167,8 +167,7 @@ public class AiDebugTextTests
     {
         foreach (var lines in WorstCases())
         {
-            // 첫 줄은 오버레이가 "종류 ● 이름 확신도" 로 붙인다. 점과 그 양옆 여백을 세 칸으로 센다(모바일 6dp + 8dp + 6dp).
-            int header = lines.Coarse.Length + 3 + lines.Label.Length + 1 + lines.Confidence.Length;
+            int header = HeaderColumns(lines);
             Assert.True(header <= AiDebugText.HudMaxColumns, $"{header}: {lines.Coarse} ● {lines.Label} {lines.Confidence}");
             foreach (string line in new[] { lines.Detail, lines.Verdict, lines.Timing }.Concat(lines.Top5))
             {
@@ -203,6 +202,60 @@ public class AiDebugTextTests
         Assert.Equal("0.83", preview.Confidence);
         Assert.Equal("thr Y   age 0.1s", preview.Detail); // 나이는 미리보기를 만든 때부터
     }
+
+    [Fact]
+    public void 말소리_미리보기의_첫_줄은_어느_이름이_실려도_58자_안에_든다()
+    {
+        // 미리보기의 종류 칸은 "SPEECH ~PREVIEW"(15자)로 정규 결과의 가장 긴 "AMBIENT"(7자)보다 여덟 자 길다. 위의 시험은 정규 결과만 본다.
+        // 미리보기의 이름은 그 프레임의 1위 이름이고 종류는 상위 3개의 투표라, 1위가 환경음 이름이어도 2·3위의 사람 소리가 합쳐 이기면
+        // 그 환경음 이름이 실린다. 그래서 521개 이름을 모두 넣어 본다. 35자를 넘는 이름은 끝을 말줄임표로 줄여 한 줄에 맞춘다.
+        // 줄이지 않으면 "Livestock, farm animals, working animals" 가 63자가 되어 폰에서 첫 줄이 두 줄로 꺾인다(모바일 #165, #461).
+        var classes = AiTestData.ClassMap;
+        var parent = Result(SoundType.Ambient, "Music", 0.6f);
+        int longest = 0, shortened = 0;
+        for (int i = 0; i < classes.Count; i++)
+        {
+            string name = classes[i];
+            var lines = Format(parent.AsSpeechPreview(name, 0.99f, timestampMs: 1_100L));
+            Assert.Equal("SPEECH" + AiDebugText.PreviewMarker, lines.Coarse);
+            int header = HeaderColumns(lines);
+            Assert.True(header <= AiDebugText.HudMaxColumns, $"{header}: {lines.Coarse} ● {lines.Label} {lines.Confidence}");
+            longest = Math.Max(longest, header);
+            if (lines.Label != name)
+            {
+                shortened++;
+                Assert.EndsWith(AiDebugText.Ellipsis, lines.Label);
+                Assert.StartsWith(lines.Label[..^AiDebugText.Ellipsis.Length], name);
+            }
+        }
+        Assert.Equal(AiDebugText.HudMaxColumns, longest);
+        Assert.True(shortened > 0, "줄인 이름이 하나도 없다");
+        // 기본 종류가 사람 소리인 이름은 가장 긴 것(35자)도 줄지 않는다. 미리보기에 가장 자주 실리는 이름들이다.
+        Assert.Equal("Hubbub, speech noise, speech babble",
+            Format(parent.AsSpeechPreview("Hubbub, speech noise, speech babble", 0.99f, timestampMs: 1_100L)).Label);
+        Assert.Equal("Livestock, farm animals, working a" + AiDebugText.Ellipsis,
+            Format(parent.AsSpeechPreview("Livestock, farm animals, working animals", 0.99f, timestampMs: 1_100L)).Label);
+    }
+
+    [Fact]
+    public void 정규_결과의_첫_줄은_어느_이름도_줄이지_않는다()
+    {
+        // 정규 결과는 종류 칸이 짧아 가장 긴 이름(40자)도 한 줄에 든다. 채점할 때 보는 이름이 잘리면 안 된다.
+        var classes = AiTestData.ClassMap;
+        foreach (var type in new[] { SoundType.Ambient, SoundType.Speech, SoundType.Danger })
+        {
+            for (int i = 0; i < classes.Count; i++)
+            {
+                var lines = Format(Result(type, classes[i], 0.99f));
+                Assert.Equal(classes[i], lines.Label);
+                Assert.True(HeaderColumns(lines) <= AiDebugText.HudMaxColumns);
+            }
+        }
+    }
+
+    /// <summary>첫 줄의 글자 수. 오버레이가 "종류 ● 이름 확신도" 로 붙인다. 점과 그 양옆 여백을 세 칸으로 센다(모바일 6dp + 8dp + 6dp).</summary>
+    private static int HeaderColumns(AiDebugLines lines) =>
+        lines.Coarse.Length + AiDebugText.HeaderDotColumns + lines.Label.Length + 1 + lines.Confidence.Length;
 
     [Fact]
     public void 같은_입력이면_같은_줄로_본다()

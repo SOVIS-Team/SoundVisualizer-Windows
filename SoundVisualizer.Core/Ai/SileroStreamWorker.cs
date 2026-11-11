@@ -15,6 +15,8 @@ namespace SoundVisualizer.Ai
     ///   모델 상태를 비우고 <c>discontinuity</c> 를 부른다. 정규 추론은 이 스레드를 기다리지 않는다.
     /// - 링의 세대가 바뀌면(캡처를 다시 시작) 처음부터 다시 센다. 덩어리를 본 뒤에도 세대가 그대로일 때만 결과를 넘긴다.
     /// - 모델은 이 스레드가 만들고 쓰고 닫는다. 만들거나 돌리다 실패하면 미리보기만 꺼지고(<see cref="Failed"/>) 정규 분류는 그대로 돈다.
+    /// - 모델이 깨진 값(유한하지 않거나 0~1 밖)을 내는 것은 실패가 아니다. 상태를 비우고 <c>discontinuity</c> 를 부른 뒤 다음 덩어리부터
+    ///   이어 간다(<see cref="InvalidScores"/>). 예전에는 이것도 실패로 쳐서, 값 하나 때문에 캡처를 다시 시작할 때까지 미리보기가 꺼졌다.
     ///
     /// PC 에서 바꾼 것: 닫을 때 스레드가 끝나기를 기다린다(<see cref="Join"/>, 파이프라인이 1초까지). Android 는 기다리지 않고 스레드가
     /// 스스로 끝나며 세션을 놓게 둔다. 여기서도 기다리다 시간이 다 되면 그렇게 둔다.
@@ -44,11 +46,12 @@ namespace SoundVisualizer.Ai
         private int _failed;
         private long _calls;
         private long _resets;
+        private long _invalidScores;
         private long _next;
 
         /// <param name="buffer">읽을 AI 링. 레이트는 만들 때 정해진다.</param>
         /// <param name="modelFactory">이 스레드 안에서 한 번 부른다. 만든 모델은 이 스레드가 닫는다.</param>
-        /// <param name="discontinuity">밀린 것을 버리고 건너뛸 때 이 스레드에서 부른다. 걸린 후보를 비우는 데 쓴다.</param>
+        /// <param name="discontinuity">밀린 것을 버리고 건너뛸 때와 모델이 깨진 값을 냈을 때 이 스레드에서 부른다. 걸린 후보를 비우는 데 쓴다.</param>
         /// <param name="block">덩어리 하나를 본 뒤 이 스레드에서 부른다. 오래 붙잡지 않는다.</param>
         /// <param name="nanoClock">단조 나노초. 덩어리를 본 시각을 잰다.</param>
         public SileroStreamWorker(
@@ -77,8 +80,11 @@ namespace SoundVisualizer.Ai
         /// <summary>Silero 를 돌린 덩어리 수(테스트와 진단용).</summary>
         public long Calls => Interlocked.Read(ref _calls);
 
-        /// <summary>모델 상태를 비운 횟수. 세대가 바뀌거나(처음 한 번 포함) 밀린 것을 버릴 때 센다.</summary>
+        /// <summary>모델 상태를 비운 횟수. 세대가 바뀌거나(처음 한 번 포함) 밀린 것을 버릴 때, 모델이 깨진 값을 냈을 때 센다.</summary>
         public long Resets => Interlocked.Read(ref _resets);
+
+        /// <summary>모델이 깨진 값(유한하지 않거나 0~1 밖)을 낸 덩어리 수. 그 덩어리는 증거로 넘기지 않는다(테스트와 진단용).</summary>
+        public long InvalidScores => Interlocked.Read(ref _invalidScores);
 
         /// <summary>모델을 만들거나 돌리다 실패해 미리보기를 껐는지. 정규 분류는 상관없이 돈다.</summary>
         public bool Failed => Volatile.Read(ref _failed) != 0;
@@ -167,6 +173,24 @@ namespace SoundVisualizer.Ai
                         BeforeScoreForTest?.Invoke();
                         float probability = model.Score(output);
                         Interlocked.Increment(ref _calls);
+                        if (!SileroInference.IsValidProbability(probability))
+                        {
+                            // 깨진 값이 한 번 나오면 이어받는 순환 상태도 믿을 수 없다. 그렇다고 스레드를 끝내면 캡처를 다시 시작할 때까지
+                            // 미리보기가 조용히 꺼진다. 밀린 것을 버릴 때처럼 상태를 비우고 모아 둔 증거(후보)를 버린 뒤, 이 덩어리는 건너뛰고
+                            // 다음 덩어리부터 이어 간다(Android #456). 값이 계속 깨져 나와도 미리보기가 받아들여지지 않을 뿐이다.
+                            model.Reset();
+                            Interlocked.Increment(ref _resets);
+                            // 값이 계속 깨져 나오면 덩어리마다(초당 31번) 오므로 처음 한 번만 남긴다.
+                            if (Interlocked.Increment(ref _invalidScores) == 1)
+                            {
+                                AppLog.Warn(Tag, string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                                    $"Silero returned an invalid speech probability {probability}; state reset, preview continues"));
+                            }
+                            _discontinuity();
+                            next += SileroInference.BlockSize;
+                            Interlocked.Exchange(ref _next, next);
+                            continue;
+                        }
                         // 보는 사이 캡처를 다시 시작했으면 옛 세대의 결과는 넘기지 않는다.
                         if (_buffer.Cursor().Generation == epoch && !IsClosed)
                         {

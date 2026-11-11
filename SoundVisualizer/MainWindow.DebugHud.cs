@@ -14,12 +14,17 @@ namespace SoundVisualizer
     // 개발자 모드 HUD(안드로이드 AiDebugOverlay): 오버레이 왼쪽 위에 AI 가 말한 것을 그대로 띄우고, 켜 두었으면 결과를 CSV 로 남긴다.
     // 렌더 루프와 따로 100ms 타이머로 돈다. 그래서 보이는 것이 없어 오버레이가 쉬는 동안에도 HUD 는 멈추지 않는다(나이가 자라는 것이
     // "지금 추론이 돌지 않는다" 는 신호다). 언제 읽고 언제 기록할지는 Core 의 AiDebugHud 가 정하고, 여기는 화면과 타이머만 맡는다.
+    // AI 가 결과를 게시하면 타이머를 기다리지 않고 바로 한 번 더 읽는다(_hudRefresh, 안드로이드 #412). 100ms 도 못 사는 말소리 미리보기가
+    // 화면과 기록에서 통째로 빠지지 않게 한다.
     public partial class MainWindow
     {
         // 지금 소리 크기. 캡처 스레드가 버퍼마다 넣고(HandleAudioDataAsync) HUD 가 읽는다.
         private readonly CaptureLevel _level = new();
         private readonly AiDebugHud _debugHud = new();
         private readonly DispatcherTimer _debugHudTimer = new() { Interval = TimeSpan.FromMilliseconds(AiDebugHud.PollIntervalMs) };
+        // AI 파이프라인이 결과를 게시할 때 추론 스레드에서 Notify 를 부른다. HUD 를 읽는 동안에만 UI 스레드에 읽기 하나를 넘긴다.
+        // 생성자가 AI 를 만들기(BootSequence) 전에 채운다.
+        private readonly AiHudRefresh _hudRefresh;
         // 지금 HUD 에 넣어 둔 글자. 같으면 다시 넣지 않는다.
         private AiDebugLines? _debugHudLines;
 
@@ -29,6 +34,7 @@ namespace SoundVisualizer
             _debugHudTimer.Tick += (s, e) => PollDebugHud();
             Closed += (s, e) =>
             {
+                _hudRefresh.Active = false;
                 _debugHudTimer.Stop();
                 // 기록 파일을 닫는다. 남은 줄을 쓰기를 1초까지 기다린다. 런처를 닫을 때도 이 창을 먼저 닫으므로, 앱이 끝나며 받아 둔 줄을 잃지 않는다.
                 _debugHud.Dispose();
@@ -43,6 +49,9 @@ namespace SoundVisualizer
         private void SyncDebugHud()
         {
             if (!_debugHud.Update(AppSettings.IsAdminMode, AppSettings.DeveloperRecord)) return;
+            // HUD 를 읽는 동안에만 결과 알림을 받는다. 기록은 HUD 를 읽는 동안에만 돌므로 이것으로 둘 다 가린다. 타이머는 그대로 돈다.
+            // 결과가 오지 않는 동안(무음)의 나이와 소리 크기는 타이머가 읽는다.
+            _hudRefresh.Active = _debugHud.IsPolling;
             if (_debugHud.IsPolling)
             {
                 PollDebugHud(); // 첫 타이머를 기다리지 않고 지금 값으로 채워 빈 판이 잠깐 보이지 않게 한다
@@ -57,7 +66,8 @@ namespace SoundVisualizer
         }
 
         /// <summary>
-        /// HUD 를 한 번 읽는다(100ms 마다). 결과·소리 크기·표시 여부·AI 상태를 이 순간 한 번씩만 읽어 화면과 기록이 같은 값을 쓴다.
+        /// HUD 를 한 번 읽는다(100ms 마다, 그리고 AI 가 결과를 게시할 때마다). 결과·소리 크기·표시 여부·AI 상태를 이 순간 한 번씩만 읽어
+        /// 화면과 기록이 같은 값을 쓴다. 같은 결과를 거듭 읽어도 기록에는 한 줄만 남는다(AiDebugRecorder).
         /// </summary>
         private void PollDebugHud()
         {

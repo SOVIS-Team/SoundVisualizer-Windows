@@ -142,9 +142,13 @@ namespace SoundVisualizer.Ai
 
         /// <summary>
         /// 16kHz 512샘플로 말소리일 확률(0~1)을 낸다. 상태와 앞 덩어리의 끝을 다음 덩어리로 넘긴다. 할당하지 않는다.
+        ///
+        /// 모델이 유한하지 않거나 0~1 밖의 값을 내도 던지지 않고 그대로 돌려준다(<see cref="IsValidProbability"/> 로 가른다). 예전에는 여기서
+        /// 던졌고, 미리보기 스레드가 그것을 모델 실패로 받아 캡처를 다시 시작할 때까지 미리보기가 조용히 꺼졌다. 깨진 값 하나는 지나가는
+        /// 일이라, 부르는 쪽(<see cref="SileroStreamWorker"/>)이 상태를 비우고 이어 간다(Android #456). 지금 모델(v6.2.3)은 NaN·무한대가
+        /// 섞인 소리에도 0~1 의 값을 내므로(SileroInferenceTests) 실제로는 드문 경우의 대비다.
         /// </summary>
         /// <exception cref="ObjectDisposedException">닫은 뒤에 불렀다.</exception>
-        /// <exception cref="InvalidDataException">모델이 0~1 밖이나 유한하지 않은 값을 냈다(Android 의 require 와 같다).</exception>
         public float Score(ReadOnlySpan<float> block)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -157,10 +161,15 @@ namespace SoundVisualizer.Ai
             float probability = _output[0];
             _nextState.CopyTo(_state, 0);
             block[(BlockSize - ContextSize)..].CopyTo(_contextTail);
-            if (!float.IsFinite(probability) || probability < 0f || probability > 1f)
-                throw new InvalidDataException($"Silero returned an invalid speech probability {probability}");
             return probability;
         }
+
+        /// <summary>
+        /// <see cref="Score"/> 가 낸 값이 확률로 쓸 만한지(유한하고 0~1 안). 아니면 그 값을 낸 순환 상태도 믿을 수 없으므로
+        /// 부르는 쪽이 <see cref="Reset"/> 하고 그 덩어리를 증거로 세지 않는다.
+        /// </summary>
+        public static bool IsValidProbability(float probability) =>
+            float.IsFinite(probability) && probability >= 0f && probability <= 1f;
 
         /// <summary>세션과 버퍼를 놓는다. 여러 번 불러도 된다. <see cref="Score"/> 와 겹쳐 부르면 안 된다(같은 스레드에서만 닫는다).</summary>
         public void Dispose()
@@ -218,7 +227,10 @@ namespace SoundVisualizer.Ai
         /// <inheritdoc cref="SileroInference.Reset"/>
         void Reset();
 
-        /// <inheritdoc cref="SileroInference.Score"/>
+        /// <summary>
+        /// 16kHz 512샘플로 말소리일 확률(0~1)을 낸다. 깨진 값(유한하지 않거나 0~1 밖)은 던지지 않고 그대로 돌려준다
+        /// (<see cref="SileroInference.IsValidProbability"/>). 던지는 것은 모델을 더 쓸 수 없는 실패뿐이고, 그때는 미리보기가 꺼진다.
+        /// </summary>
         float Score(ReadOnlySpan<float> block);
     }
 

@@ -86,6 +86,59 @@ public class EasySizesTests
     }
 
     [Theory]
+    [InlineData(49.5, 50, EasySize.Medium)]   // 슬라이더에 "50" 으로 보인다
+    [InlineData(50.5, 50, EasySize.Medium)]   // 이것도 "50" 이다(.NET 의 F0 는 꼭 .5 인 값을 짝수 쪽으로 적는다)
+    [InlineData(50, 49.5, EasySize.Medium)]
+    [InlineData(50, 50.5, EasySize.Medium)]
+    [InlineData(29.5, 39.5, EasySize.Small)]
+    [InlineData(30.5, 40.5, EasySize.Small)]
+    [InlineData(75, 69.5, EasySize.Large)]
+    [InlineData(75, 70.5, EasySize.Large)]
+    public void 꼭_x점5_인_값도_슬라이더에_단계의_수로_보이면_그_단계다(double intensity, double opacity, EasySize expected)
+    {
+        // 예전에는 단계 값과의 차이가 0.5 보다 작아야 했다. 49.5 는 슬라이더에 "50" 으로 보이는데도 보통이 아니어서, 자세한 설정은 50 이라
+        // 하고 쉬운 설정은 "자세한 설정에서 맞춘 크기"라고 했다.
+        var settings = new VisualModeSettings { Intensity = intensity, VisualOpacity = opacity };
+        Assert.Equal(ValueText.Format(expected.Intensity()), ValueText.Format(intensity));
+        Assert.Equal(ValueText.Format(expected.Opacity()), ValueText.Format(opacity));
+
+        Assert.Equal(expected, EasySizes.Of(settings));
+        Assert.Equal(EasySizeControl.Size, EasySizes.DetailControl(settings));
+    }
+
+    [Theory]
+    [InlineData(74.5, 70, "74")]   // 홀수인 75 의 양옆 .5 는 짝수인 74·76 으로 보인다
+    [InlineData(75.5, 70, "76")]
+    public void 꼭_x점5_인_값이_다른_수로_보이면_단계가_아니다(double intensity, double opacity, string shown)
+    {
+        // 차이가 0.5 이하인지로 따지면 이 값들이 크게가 되어, 자세한 설정은 74 라 하고 쉬운 설정은 크게(75)를 선택해 보인다.
+        var settings = new VisualModeSettings { Intensity = intensity, VisualOpacity = opacity };
+        Assert.Equal(shown, ValueText.Format(intensity));
+
+        Assert.Null(EasySizes.Of(settings));
+        Assert.Equal(EasySizeControl.Size, EasySizes.DetailControl(settings));
+    }
+
+    [Fact]
+    public void 단계인지는_슬라이더의_값_글자가_단계의_수와_같은지와_늘_같다()
+    {
+        // 단계마다 크기와 진하기를 ±0.7 안에서 0.01 씩 움직여 본다. 꼭 .5 인 값(1/100 로 나누어떨어지지 않는 이진 소수 곁의 값 포함)도 지나간다.
+        foreach (var step in EasySizes.All)
+        {
+            for (int i = -70; i <= 70; i++)
+            {
+                double size = step.Intensity() + i / 100.0;
+                double opacity = step.Opacity() + i / 100.0;
+                bool sizeShownAsStep = ValueText.Format(size) == ValueText.Format(step.Intensity());
+                bool opacityShownAsStep = ValueText.Format(opacity) == ValueText.Format(step.Opacity());
+
+                Assert.Equal(sizeShownAsStep, EasySizes.Of(new VisualModeSettings { Intensity = size, VisualOpacity = step.Opacity() }) == step);
+                Assert.Equal(opacityShownAsStep, EasySizes.Of(new VisualModeSettings { Intensity = step.Intensity(), VisualOpacity = opacity }) == step);
+            }
+        }
+    }
+
+    [Theory]
     [InlineData(63, 50, false, EasySizeControl.Size)]
     [InlineData(50, 90, false, EasySizeControl.Opacity)]
     [InlineData(30, 70, false, EasySizeControl.Opacity)]
