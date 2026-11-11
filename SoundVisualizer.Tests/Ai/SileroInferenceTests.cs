@@ -96,6 +96,43 @@ public class SileroInferenceTests(ITestOutputHelper output)
         }
     }
 
+    [Theory]
+    [InlineData(float.NaN)]
+    [InlineData(float.PositiveInfinity)]
+    [InlineData(float.MaxValue)]
+    public void 지금_모델은_깨진_소리에도_쓸_수_있는_확률을_내고_상태를_비우면_처음과_같은_값을_낸다(float sample)
+    {
+        // 루프백 캡처의 float PCM 에는 NaN 이나 무한대가 섞일 수 있다(소리를 내는 앱의 결함). 고정한 v6.2.3 모델은 그런 덩어리에도
+        // 0~1 의 값을 내고 뒤의 덩어리까지 깨뜨리지 않는다. 그래서 깨진 확률을 막는 일(SileroStreamWorker)은 지금 모델에서는 일어나지
+        // 않는 경우의 대비다. 모델을 바꿔 이 성질이 달라지면 여기서 먼저 알게 된다.
+        using var model = SileroInference.Create(AiTestData.ModelDirectory);
+        var chunk = new float[Block];
+        for (int i = 0; i < chunk.Length; i++) chunk[i] = (float)Math.Sin(i * .07) * .4f;
+        float first = model.Score(chunk);
+
+        var broken = new float[Block];
+        Array.Fill(broken, sample);
+        Assert.True(SileroInference.IsValidProbability(model.Score(broken)));
+        for (int i = 0; i < 4; i++) Assert.True(SileroInference.IsValidProbability(model.Score(chunk)));
+
+        model.Reset();
+        Assert.Equal(first, model.Score(chunk));
+    }
+
+    [Theory]
+    [InlineData(0f, true)]
+    [InlineData(0.5f, true)]
+    [InlineData(1f, true)]
+    [InlineData(-0.0001f, false)]
+    [InlineData(1.0001f, false)]
+    [InlineData(float.NaN, false)]
+    [InlineData(float.PositiveInfinity, false)]
+    [InlineData(float.NegativeInfinity, false)]
+    public void 확률로_쓸_만한_값은_유한하고_0에서_1_사이다(float probability, bool expected)
+    {
+        Assert.Equal(expected, SileroInference.IsValidProbability(probability));
+    }
+
     [Fact]
     public void 덩어리_길이가_다르거나_닫은_뒤에는_부르지_않는다()
     {

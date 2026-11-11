@@ -308,10 +308,59 @@ public class RealtimeAiPipelineSpeechPreviewTests(ITestOutputHelper output)
         Assert.Same(pipeline.LastClassification(), pipeline.LastDisplayClassification());
     }
 
+    [Theory]
+    [InlineData(float.NaN)]
+    [InlineData(float.PositiveInfinity)]
+    [InlineData(-0.01f)]
+    [InlineData(1.01f)]
+    public void Silero_가_깨진_값을_한_번_내면_상태와_후보를_비우고_미리보기는_이어_간다(float broken)
+    {
+        // 깨진 값 하나를 모델 실패로 치면 캡처를 다시 시작할 때까지 미리보기가 조용히 꺼진다(Android #456). 지금 모델은 NaN 이 섞인
+        // 소리에도 쓸 수 있는 값을 내지만(SileroInferenceTests), 값을 믿는 대신 여기서 막는다.
+        var silero = new FakeSileroModel();
+        using var h = new Harness(16000, 1, silero: silero);
+        h.FirstSpeechCandidate();
+        int before = silero.ScoreCalls;
+        int modelResets = silero.ResetCalls;
+        long workerResets = h.Worker.Resets;
+        long fresh = h.Frames;
+        // 정규 추론이 본 소리와 걸친 덩어리 하나 뒤의 두 번째 새 덩어리에서만 깨진 값을 낸다.
+        silero.Probability = call => call == before + 3 ? broken : 1f;
+        // 한꺼번에 넣으면 다섯 덩어리 넘게 밀려 건너뛸 수 있으므로 세 덩어리씩 넣고 따라잡기를 기다린다.
+        h.FeedFreshBlocks(3, fresh);
+        h.FeedFreshBlocks(6, fresh);
+
+        // 스레드는 살아 있고, 이어받던 상태를 한 번 비웠다. 깨진 값은 증거로 넘기지 않는다(1 보다 큰 값을 말소리로 세지 않는다).
+        Assert.False(h.Worker.Failed);
+        Assert.True(h.Worker.IsAlive);
+        Assert.Equal(modelResets + 1, silero.ResetCalls);
+        Assert.Equal(workerResets + 1, h.Worker.Resets);
+        Assert.Equal(1, h.Worker.InvalidScores);
+        Assert.Equal(0, silero.DisposeCalls);
+        // 밀린 것을 버릴 때처럼 걸려 있던 후보도 버린다. 뒤의 덩어리 넷이 모두 말소리여도 이 후보로는 받아들이지 않는다.
+        Assert.False(h.Pipeline.LastDisplayClassification()?.SpeechPreview);
+        Assert.True(silero.ScoreCalls >= before + 6, "the worker kept scoring after the broken value");
+
+        // 다음 후보부터는 다시 받아들인다. 캡처를 다시 시작하지 않아도 된다(같은 스레드, 같은 모델).
+        h.Yamnet.TopClass = Names.IndexOf("Music");
+        Assert.Equal(AiTickOutcome.Completed, h.Pipeline.RunTickOnce(250));
+        h.Yamnet.TopClass = SpeechIndex;
+        h.Nanos.Set(500 * Ms);
+        h.WaitCaughtUp();
+        Assert.Equal(AiTickOutcome.Completed, h.Pipeline.RunTickOnce(500));
+        var regular = h.Pipeline.LastClassification();
+        Assert.Equal(SoundType.Ambient, regular?.Coarse);
+        h.FeedFreshBlocks(3, h.Frames);
+        Assert.True(h.Pipeline.LastDisplayClassification()?.SpeechPreview);
+        Assert.Equal(1, h.Worker.InvalidScores);
+        Assert.Equal(0, silero.DisposeCalls);
+    }
+
     [Fact]
     public void Silero_가_돌다_실패하면_미리보기만_꺼지고_정규_분류는_돈다()
     {
-        var silero = new FakeSileroModel { OnScore = _ => throw new InvalidDataException("bad probability") };
+        // 모델을 더 쓸 수 없는 실패(ONNX Runtime 의 예외 등)다. 깨진 값 하나와 달리 미리보기를 끈다.
+        var silero = new FakeSileroModel { OnScore = _ => throw new InvalidOperationException("onnxruntime failed") };
         using var h = new Harness(16000, 1, silero: silero);
         h.Feed(PipelineTestAudio.WindowFrames(16000));
         SpinUntil(() => h.Worker.Failed);
