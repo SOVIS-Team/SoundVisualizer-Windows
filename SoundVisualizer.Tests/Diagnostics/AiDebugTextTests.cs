@@ -167,8 +167,7 @@ public class AiDebugTextTests
     {
         foreach (var lines in WorstCases())
         {
-            // 첫 줄은 오버레이가 "종류 ● 이름 확신도" 로 붙인다. 점과 그 양옆 여백을 세 칸으로 센다(모바일 6dp + 8dp + 6dp).
-            int header = lines.Coarse.Length + 3 + lines.Label.Length + 1 + lines.Confidence.Length;
+            int header = HeaderColumns(lines);
             Assert.True(header <= AiDebugText.HudMaxColumns, $"{header}: {lines.Coarse} ● {lines.Label} {lines.Confidence}");
             foreach (string line in new[] { lines.Detail, lines.Verdict, lines.Timing }.Concat(lines.Top5))
             {
@@ -203,6 +202,42 @@ public class AiDebugTextTests
         Assert.Equal("0.83", preview.Confidence);
         Assert.Equal("thr Y   age 0.1s", preview.Detail); // 나이는 미리보기를 만든 때부터
     }
+
+    [Fact]
+    public void 말소리_미리보기의_첫_줄은_기본_종류가_대화음인_모든_이름에서_58자_안에_든다()
+    {
+        // 미리보기의 종류 칸은 "SPEECH ~PREVIEW"(15자)로 정규 결과의 가장 긴 "AMBIENT"(7자)보다 여덟 자 길다. 위의 시험은 정규 결과만 본다.
+        // 미리보기는 사용자 지정이 하나도 없을 때만 생기므로(AiClassificationStage.SpeechOnset) 기본 매핑으로 대화음인 이름을 모두 넣어 본다.
+        // 지금 가장 긴 "Hubbub, speech noise, speech babble"(35자)이 꼭 58자라 여유가 없다. 표시를 한 글자라도 늘리면 여기서 걸린다.
+        //
+        // 이 시험이 지키지 않는 경우: 미리보기의 이름은 그 프레임의 1위 이름이고 종류는 상위 3개의 투표라, 1위가 환경음 이름이어도
+        // 2·3위의 대화음이 합쳐 이기면 그 환경음 이름이 실린다. 35자를 넘는 이름 셋("Livestock, farm animals, working animals",
+        // "Bird vocalization, bird call, bird song", "Wind instrument, woodwind instrument")이 그렇게 실리면 59~63자가 된다.
+        // 줄을 줄이려면 두 판(모바일 AiDebugText)이 함께 정해야 해서 여기서는 고치지 않았다. PC HUD 는 폭을 내용에 맞추므로 꺾이지 않는다.
+        var classes = AiTestData.ClassMap;
+        var speechNames = Enumerable.Range(0, classes.Count)
+            .Where(i => classes.DefaultCoarse(i) == SoundType.Speech)
+            .Select(i => classes[i])
+            .ToArray();
+        Assert.Contains("Speech", speechNames);
+        Assert.Contains("Hubbub, speech noise, speech babble", speechNames);
+
+        var parent = Result(SoundType.Ambient, "Music", 0.6f);
+        int longest = 0;
+        foreach (string name in speechNames)
+        {
+            var lines = Format(parent.AsSpeechPreview(name, 0.99f, timestampMs: 1_100L));
+            Assert.Equal("SPEECH" + AiDebugText.PreviewMarker, lines.Coarse);
+            int header = HeaderColumns(lines);
+            Assert.True(header <= AiDebugText.HudMaxColumns, $"{header}: {lines.Coarse} ● {lines.Label} {lines.Confidence}");
+            longest = Math.Max(longest, header);
+        }
+        Assert.Equal(AiDebugText.HudMaxColumns, longest);
+    }
+
+    /// <summary>첫 줄의 글자 수. 오버레이가 "종류 ● 이름 확신도" 로 붙인다. 점과 그 양옆 여백을 세 칸으로 센다(모바일 6dp + 8dp + 6dp).</summary>
+    private static int HeaderColumns(AiDebugLines lines) =>
+        lines.Coarse.Length + 3 + lines.Label.Length + 1 + lines.Confidence.Length;
 
     [Fact]
     public void 같은_입력이면_같은_줄로_본다()
