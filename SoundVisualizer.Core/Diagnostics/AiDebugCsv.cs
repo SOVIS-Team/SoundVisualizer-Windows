@@ -69,6 +69,7 @@ namespace SoundVisualizer.Diagnostics
             Cell(row, Millis(result.TotalMs));
             Cell(row, result.MappingOverrideCount.ToString(CultureInfo.InvariantCulture));
             Cell(row, result.MappingSignature);
+            Cell(row, Bool(result.SpeechPreview));
             return row.ToString();
         }
 
@@ -93,6 +94,9 @@ namespace SoundVisualizer.Diagnostics
                 columns.Add(string.Create(CultureInfo.InvariantCulture, $"top{slot}_prob"));
             }
             columns.AddRange(["level", "shown", "preprocess_ms", "yamnet_ms", "total_ms", "mapping_override_count", "mapping_signature"]);
+            // 화면에만 한 박자 먼저 보인 말소리 미리보기(모바일 #422)인지. 미리보기도 한 줄로 남으므로(HUD 가 읽은 그대로 적는다), 이 칸이 없으면
+            // 정규 확정과 섞여 세어진다. 새 칸은 늘 맨 끝에 더한다(모바일 #456). 앞의 칸 번호로 읽는 스크립트가 어긋나지 않는다.
+            columns.Add("speech_preview");
             return columns.AsReadOnly();
         }
 
