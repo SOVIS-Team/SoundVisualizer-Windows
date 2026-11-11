@@ -65,6 +65,49 @@ public class RealtimeAiPipelineSpeechPreviewTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void 미리보기를_게시하면_그_자리에서_알려_HUD_가_타이머를_기다리지_않고_읽는다()
+    {
+        // 미리보기는 다음 정규 결과가 오면 사라진다. 받아들인 때가 늦으면 100ms 도 못 살아, 100ms 타이머로만 읽는 HUD 와 기록에는
+        // 한 번도 남지 않을 수 있다(Android #412). 게시한 미리보기 스레드가 바로 알리고, 받는 쪽이 읽으면 미리보기가 이미 보인다.
+        using var h = new Harness(16000, 1);
+        var seen = new System.Collections.Concurrent.ConcurrentQueue<(string? Thread, bool Preview)>();
+        h.FirstSpeechCandidate();
+        h.OnChanged = () => seen.Enqueue((Thread.CurrentThread.Name, h.Pipeline.LastDisplayClassification()?.SpeechPreview == true));
+
+        long fresh = h.Frames;
+        h.FeedFreshBlocks(2, fresh);
+        Assert.Empty(seen); // 덩어리마다 알리지 않는다. 화면용 결과가 바뀔 때만이다
+        h.FeedFreshBlocks(3, fresh);
+
+        var notified = Assert.Single(seen);
+        Assert.Equal("SV-SileroPreview", notified.Thread);
+        Assert.True(notified.Preview);
+
+        // 다음 정규 결과가 미리보기를 대신할 때도 알린다(틱을 돌린 이 스레드에서).
+        Assert.Equal(AiTickOutcome.Completed, h.Pipeline.RunTickOnce(250));
+        Assert.Equal(2, seen.Count);
+        Assert.False(seen.Last().Preview);
+    }
+
+    [Fact]
+    public void 알림을_받는_쪽이_던져도_미리보기_스레드는_끝나지_않는다()
+    {
+        using var h = new Harness(16000, 1);
+        h.OnChanged = () => throw new InvalidOperationException("HUD is broken");
+        h.FirstSpeechCandidate();
+        h.FeedFreshBlocks(3, h.Frames);
+
+        // HUD 의 결함이 미리보기를 끄면 안 된다. 미리보기는 게시됐고 스레드는 다음 덩어리를 계속 본다.
+        Assert.True(h.Pipeline.LastDisplayClassification()?.SpeechPreview);
+        Assert.False(h.Worker.Failed);
+        long calls = h.Worker.Calls;
+        h.Feed(Block * 2);
+        h.WaitCaughtUp();
+        Assert.True(h.Worker.IsAlive);
+        Assert.True(h.Worker.Calls > calls);
+    }
+
+    [Fact]
     public void 미리보기는_PC_의_실제_틱_주기에서도_다음_정규_결과까지_이어진다()
     {
         // PC 의 틱은 15.6ms 단위 시계와 대기로 재서 다음 정규 결과가 스냅샷 뒤 255~280ms 에 온다(바쁜 PC 는 더 늦다). Android 의 275ms 로
@@ -599,9 +642,12 @@ public class RealtimeAiPipelineSpeechPreviewTests(ITestOutputHelper output)
             Channels = channels;
             Silero = silero ?? new FakeSileroModel();
             Pipeline = new RealtimeAiPipeline(rate, channels, Yamnet, Names, overrides, clock: Clock.Now, runScheduler: false,
-                speechModel: () => Silero, nanoClock: Nanos.Now);
+                speechModel: () => Silero, nanoClock: Nanos.Now, classificationChanged: () => OnChanged?.Invoke());
             Pipeline.Start();
         }
+
+        /// <summary>파이프라인이 결과 알림을 보낼 때 그 스레드(틱을 돌린 테스트 스레드나 미리보기 스레드)에서 부른다.</summary>
+        public Action? OnChanged { get; set; }
 
         public int Rate { get; }
 

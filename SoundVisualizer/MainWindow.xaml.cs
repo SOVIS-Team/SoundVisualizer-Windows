@@ -16,6 +16,7 @@ using SoundVisualizer.Audio;
 using SoundVisualizer.CoreAudio;
 using SoundVisualizer.DSP;
 using SoundVisualizer.Ai;
+using SoundVisualizer.Diagnostics;
 using SoundVisualizer.Localization;
 using SoundVisualizer.Rendering;
 using SoundVisualizer.Ui;
@@ -121,6 +122,8 @@ namespace SoundVisualizer
         {
             _pollIdleNow = PollIdle;
             _idleTimer.Tick += (s, e) => PollIdle();
+            // AI 의 결과 알림을 HUD 읽기로 바꾼다(MainWindow.DebugHud.cs). 추론 스레드는 UI 스레드를 기다리지 않는다.
+            _hudRefresh = new AiHudRefresh(read => Dispatcher.InvokeAsync(read), PollDebugHud);
             InitializeComponent();
             LanguagePicker.Fill(CmbLanguage);
             ColorButtonNames.Apply(EditPanelAmbientColorBtn, EditPanelSpeechColorBtn, EditPanelDangerColorBtn);
@@ -630,7 +633,8 @@ namespace SoundVisualizer
                     var classes = _classMap ??= YamnetClassMap.Load(System.IO.Path.Combine(ModelDirectory, "yamnet_class_map.csv"));
                     created = RealtimeAiPipeline.Create(rate, channels, ModelDirectory, classes,
                         mappingOverrides: () => AppSettings.SoundTypes,
-                        tickFailed: ex => AppLog.Warn("ai", "AI 추론 한 번이 실패했습니다.", ex));
+                        tickFailed: ex => AppLog.Warn("ai", "AI 추론 한 번이 실패했습니다.", ex),
+                        classificationChanged: _hudRefresh.Notify);
                     RealtimeAiPipeline? replaced = null;
                     bool discard;
                     lock (_aiGate)

@@ -23,6 +23,11 @@ namespace SoundVisualizer.Ai
     /// 정규 위협음이나 다음 정규 결과가 늘 이기고, 사용자 지정이 하나라도 있으면 미리보기를 쓰지 않는다. Silero 를 불러오거나 돌리다
     /// 실패해도 정규 분류는 그대로 돈다.
     ///
+    /// 결과 알림(Android 의 onClassificationChanged, #412): 정규 결과를 새로 게시하거나 지울 때(틱 스레드), 미리보기를 게시할 때(미리보기
+    /// 스레드) 만들 때 받은 <c>classificationChanged</c> 를 부른다. 개발자 HUD 가 100ms 타이머를 기다리지 않고 바로 읽게 하는 깨우기일 뿐이고
+    /// 값은 싣지 않는다. 받는 쪽은 <see cref="LastDisplayClassification"/> 을 다시 읽는다. 시작·멈춤·닫기와 미리보기 만료는 알리지 않는다
+    /// (부르는 쪽이 아는 일이거나 시간이 지나 생기는 일이라 타이머가 읽는다).
+    ///
     /// PC 에서 바꾼 것:
     /// - <see cref="Stop"/> 이 돌고 있는 틱을 기다리고 마지막 결과를 바로 숨기며, <see cref="Start"/> 는 앞 틱이 끝난 뒤에 비운다.
     ///   Android 서비스는 늦게 끝난 추론이 비운 뒤의 결과를 덮지 않도록 읽는 쪽을 떼고 AI 재시작을 미뤘는데, 여기서는 그럴 필요가 없다.
@@ -73,6 +78,8 @@ namespace SoundVisualizer.Ai
         private readonly IYamnetModel _model;
         private readonly Func<IReadOnlyDictionary<string, string>> _mappingOverrides;
         private readonly Action<Exception>? _tickFailed;
+        private readonly Action? _classificationChanged;
+        private int _classificationChangedFailed;
         private readonly Func<long> _clock;
         private readonly Func<long, CancellationToken, bool> _waitForNextTick;
         private readonly bool _runScheduler;
@@ -118,6 +125,7 @@ namespace SoundVisualizer.Ai
         /// (이 생성자로 만드는 테스트의 기본). 앱은 <see cref="Create"/> 가 넣는다.
         /// </param>
         /// <param name="nanoClock">미리보기 시각을 재는 단조 나노초. 테스트가 시각을 정한다. 기본은 <see cref="Stopwatch"/>.</param>
+        /// <param name="classificationChanged">화면용 결과가 바뀌었을 때 틱 스레드나 미리보기 스레드에서 부른다(<see cref="Create"/> 참고).</param>
         internal RealtimeAiPipeline(
             int captureSampleRate,
             int channels,
@@ -129,7 +137,8 @@ namespace SoundVisualizer.Ai
             Func<long, CancellationToken, bool>? waitForNextTick = null,
             bool runScheduler = true,
             Func<ISileroModel>? speechModel = null,
-            Func<long>? nanoClock = null)
+            Func<long>? nanoClock = null,
+            Action? classificationChanged = null)
         {
             ValidateArguments(captureSampleRate, channels, classes);
             ArgumentNullException.ThrowIfNull(model);
@@ -139,6 +148,7 @@ namespace SoundVisualizer.Ai
             _model = model;
             _mappingOverrides = mappingOverrides ?? (static () => NoOverrides);
             _tickFailed = tickFailed;
+            _classificationChanged = classificationChanged;
             _clock = clock ?? (static () => Environment.TickCount64);
             _waitForNextTick = waitForNextTick ?? WaitForNextTick;
             _runScheduler = runScheduler;
@@ -169,6 +179,11 @@ namespace SoundVisualizer.Ai
         /// 말소리 미리보기를 켤지. 켜면 같은 폴더의 silero_vad.onnx 를 미리보기 스레드가 불러온다. 그 파일이 없거나 다르면 미리보기만 꺼지고
         /// (<see cref="AppLog.Warn"/>) 정규 분류는 돈다.
         /// </param>
+        /// <param name="classificationChanged">
+        /// 화면용 결과(<see cref="LastDisplayClassification"/>)가 바뀌었다는 깨우기. 정규 결과를 게시하거나 지운 틱 스레드, 미리보기를 게시한
+        /// 미리보기 스레드에서 부른다. 값은 싣지 않으니 받는 쪽이 다시 읽는다. 추론 스레드를 붙잡지 않게 곧바로 돌아와야 한다
+        /// (UI 스레드에 넘기기만 한다, <c>Diagnostics.AiHudRefresh</c>). 던지면 삼키고 처음 한 번만 <see cref="AppLog.Warn"/> 으로 남긴다.
+        /// </param>
         /// <exception cref="ArgumentOutOfRangeException">AI 가 받지 않는 캡처 레이트이거나 채널 수가 1 보다 작다.</exception>
         /// <exception cref="FileNotFoundException">모델 파일이 없다.</exception>
         /// <exception cref="InvalidDataException">모델 파일이 배포한 것과 다르거나 입출력이 YAMNet 계약과 다르다.</exception>
@@ -180,7 +195,8 @@ namespace SoundVisualizer.Ai
             YamnetClassMap classes,
             Func<IReadOnlyDictionary<string, string>>? mappingOverrides = null,
             Action<Exception>? tickFailed = null,
-            bool speechPreview = SpeechPreviewEnabled)
+            bool speechPreview = SpeechPreviewEnabled,
+            Action? classificationChanged = null)
         {
             // 모델을 읽기 전에 거른다. 화면만 돌 레이트라면 15MB 를 해시하고 세션을 만들 까닭이 없다.
             ValidateArguments(captureSampleRate, channels, classes);
@@ -189,7 +205,8 @@ namespace SoundVisualizer.Ai
             {
                 string directory = Path.GetFullPath(modelDirectory);
                 return new RealtimeAiPipeline(captureSampleRate, channels, model, classes, mappingOverrides, tickFailed,
-                    speechModel: speechPreview ? () => SileroInference.Create(directory) : null);
+                    speechModel: speechPreview ? () => SileroInference.Create(directory) : null,
+                    classificationChanged: classificationChanged);
             }
             catch
             {
@@ -373,7 +390,7 @@ namespace SoundVisualizer.Ai
             // 앞 틱이 아직 돌고 있으면 기다리지 않고 건너뛴다(Kotlin 의 tryLock).
             if (!Monitor.TryEnter(_inferLock)) return AiTickOutcome.Busy;
 
-            (AiTickOutcome Outcome, Exception? Failure) tick;
+            (AiTickOutcome Outcome, Exception? Failure, bool Changed) tick;
             try
             {
                 tick = RunTickLocked(nowMs);
@@ -386,6 +403,8 @@ namespace SoundVisualizer.Ai
             }
 
             if (tick.Failure is not null) ReportTickFailure(tick.Failure);
+            // 추론 잠금을 놓은 뒤에 알린다. 받는 쪽이 느리거나 이 파이프라인을 다시 불러도 다음 틱과 닫기가 잠금에서 기다리지 않는다.
+            if (tick.Changed && !IsClosed) NotifyClassificationChanged();
             return tick.Outcome;
         }
 
@@ -410,28 +429,34 @@ namespace SoundVisualizer.Ai
         /// <summary>말소리 미리보기 스레드. 끄면 null.</summary>
         internal SileroStreamWorker? SpeechWorkerForTest => _speechWorker;
 
-        private (AiTickOutcome Outcome, Exception? Failure) RunTickLocked(long nowMs)
+        /// <returns>Changed 는 이 틱이 정규 결과를 새로 게시했거나(완료) 매핑이 바뀌어 지웠는지다. 잠금을 놓은 뒤에 알린다.</returns>
+        private (AiTickOutcome Outcome, Exception? Failure, bool Changed) RunTickLocked(long nowMs)
         {
             // 정규 추론이 시작되면 미리보기를 새로 받아들이지 않는다. 이미 받아들인 것은 만료나 다음 정규 결과까지 둔다(Android 와 같다).
             _speechGate.RegularStarted();
             // Dispose 가 잠금을 잡기 직전에 위의 검사를 지났을 수 있으므로 잠금 안에서 다시 본다.
-            if (IsClosed) return (AiTickOutcome.Closed, null);
+            if (IsClosed) return (AiTickOutcome.Closed, null, false);
 
+            bool cleared = false;
             try
             {
                 // 무음이라 건너뛰는 틱에도 먼저 반영한다. 이전 매핑에서 확정한 위협음이 새 매핑으로 넘어가지 않게 한다.
                 // 매핑이 바뀌어 마지막 결과를 지웠으면 그 결과의 미리보기도 지운다.
-                if (_stage.UpdateMapping(CurrentOverrides())) ClearSpeechPreview();
+                if (_stage.UpdateMapping(CurrentOverrides()))
+                {
+                    ClearSpeechPreview();
+                    cleared = true;
+                }
             }
             catch (Exception ex)
             {
-                return (AiTickOutcome.Failed, ex);
+                return (AiTickOutcome.Failed, ex, false);
             }
 
             if (!_gate.IsInferenceOpen(nowMs))
             {
                 Interlocked.Increment(ref _silenceSkippedTicks);
-                return (AiTickOutcome.SkippedForSilence, null);
+                return (AiTickOutcome.SkippedForSilence, null, cleared);
             }
 
             try
@@ -441,12 +466,12 @@ namespace SoundVisualizer.Ai
             catch (Exception ex)
             {
                 _gate.OnInferenceFailed(nowMs);
-                return (AiTickOutcome.Failed, ex);
+                return (AiTickOutcome.Failed, ex, cleared);
             }
             // 결과를 게시한 뒤에만 완료로 센다. 닫기 경합 테스트가 잠깐 보이는 결과 대신 완료 수로 확인한다(Kotlin 과 같다).
             Interlocked.Increment(ref _inferenceCompletions);
             _gate.OnInferenceCompleted(nowMs);
-            return (AiTickOutcome.Completed, null);
+            return (AiTickOutcome.Completed, null, true);
         }
 
         private void InferLocked()
@@ -507,6 +532,28 @@ namespace SoundVisualizer.Ai
             if (_nanoClock() < accepted.AcceptBeforeNs)
             {
                 Volatile.Write(ref _displayPreview, new DisplayPreview(parent.Result, preview, accepted.ExpiresNs));
+                // 미리보기는 다음 정규 결과가 오면 사라져 100ms 도 못 사는 일이 있다. 타이머만으로는 HUD 와 기록이 그것을 통째로 놓친다.
+                NotifyClassificationChanged();
+            }
+        }
+
+        /// <summary>
+        /// 화면용 결과가 바뀌었다고 알린다. 틱 스레드(추론 잠금 밖)와 미리보기 스레드에서 부른다. 받는 쪽의 결함이 추론이나 미리보기를
+        /// 멈추면 안 되므로 예외는 삼키고, 틱마다 같은 줄이 쌓이지 않게 처음 한 번만 남긴다.
+        /// </summary>
+        private void NotifyClassificationChanged()
+        {
+            if (_classificationChanged is null) return;
+            try
+            {
+                _classificationChanged();
+            }
+            catch (Exception ex)
+            {
+                if (Interlocked.Exchange(ref _classificationChangedFailed, 1) == 0)
+                {
+                    AppLog.Warn(Tag, "Classification-changed callback threw", ex);
+                }
             }
         }
 
