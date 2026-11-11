@@ -41,7 +41,8 @@ namespace SoundVisualizer
         private AudioRouter? _audioRouter;
         private VectorCalculator? _vectorCalc;
         // AI 는 캡처 형식(샘플레이트·채널 수)이 정해진 뒤 백그라운드에서 만든다. 만드는 동안과 만들지 못했을 때는 null 이고,
-        // 그동안 그래픽은 환경음 색으로 그린다. 캡처 스레드가 넣고(Ingest) 렌더 루프가 읽는다(LastClassification).
+        // 그동안 그래픽은 환경음 색으로 그린다. 캡처 스레드가 넣고(Ingest) 렌더 루프가 읽는다(LastDisplayClassification).
+        // 화면과 개발자 HUD 는 말소리 미리보기가 섞인 화면용 결과를 읽는다(모바일 #422). 정규 결과만 필요한 곳은 LastClassification 을 읽는다.
         private RealtimeAiPipeline? _aiPipeline;
         private readonly object _aiGate = new();
         private int _aiRequestedRate, _aiRequestedChannels; // 만들기를 요청한 형식. 같은 형식을 거듭 만들지 않게 한다.
@@ -245,7 +246,8 @@ namespace SoundVisualizer
             UpdateHotkeysAndHud(nowTicks);
 
             // AI 결과는 프레임마다 한 번만 읽고, 이 프레임의 판단은 모두 그 한 결과로 한다.
-            var aiResult = Volatile.Read(ref _aiPipeline)?.LastClassification();
+            // 화면용 결과라 말소리 미리보기가 받아들여졌으면 대화음이 한 박자 먼저 온다(모바일 VisualizerInputs.coarseLabel).
+            var aiResult = Volatile.Read(ref _aiPipeline)?.LastDisplayClassification();
             _currentType = aiResult?.Coarse ?? SoundType.Ambient;
 
             bool isVisible = IsTypeVisible(_currentType);
@@ -531,7 +533,8 @@ namespace SoundVisualizer
                 return;
             }
 
-            var aiResult = Volatile.Read(ref _aiPipeline)?.LastClassification();
+            // 그릴 때와 같은 화면용 결과로 깨울지 정한다(모바일 pollWake 도 같은 입력을 읽는다).
+            var aiResult = Volatile.Read(ref _aiPipeline)?.LastDisplayClassification();
             _currentType = aiResult?.Coarse ?? SoundType.Ambient;
             bool isVisible = IsTypeVisible(_currentType);
 

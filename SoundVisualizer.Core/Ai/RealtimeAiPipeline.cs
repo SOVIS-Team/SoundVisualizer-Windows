@@ -17,10 +17,19 @@ namespace SoundVisualizer.Ai
     /// - 틱은 이 클래스가 띄우는 배경 스레드 "SV-AiTick" 에서 돈다(Android 는 Dispatchers.Default 코루틴).
     /// 시각은 모두 단조 증가하는 밀리초 하나(<see cref="Environment.TickCount64"/>)로 잰다.
     ///
+    /// 말소리 미리보기(Android #422, <see cref="SpeechPreviewEnabled"/>): 정규 추론이 첫 대화음 후보(확정까지 한 틱 남음)를 내면, 그 뒤에
+    /// 새로 들어온 소리를 배경 스레드 "SV-SileroPreview" 의 Silero VAD 가 확인해 화면에만 대화음을 한 박자 먼저 보인다
+    /// (<see cref="LastDisplayClassification"/>). 정규 결과(<see cref="LastClassification"/>)·위협음 판단·사용자 지정은 바꾸지 않는다.
+    /// 정규 위협음이나 다음 정규 결과가 늘 이기고, 사용자 지정이 하나라도 있으면 미리보기를 쓰지 않는다. Silero 를 불러오거나 돌리다
+    /// 실패해도 정규 분류는 그대로 돈다.
+    ///
     /// PC 에서 바꾼 것:
     /// - <see cref="Stop"/> 이 돌고 있는 틱을 기다리고 마지막 결과를 바로 숨기며, <see cref="Start"/> 는 앞 틱이 끝난 뒤에 비운다.
     ///   Android 서비스는 늦게 끝난 추론이 비운 뒤의 결과를 덮지 않도록 읽는 쪽을 떼고 AI 재시작을 미뤘는데, 여기서는 그럴 필요가 없다.
     /// - <see cref="Dispose"/> 가 1초 안에 추론을 기다리지 못하면 Android 는 세션을 버리지만(누수), 여기서는 그 추론이 끝나면서 닫는다.
+    ///   Silero 스레드도 같은 1초 안에서 끝나기를 기다린다(Android 는 기다리지 않는다). 못 기다리면 그 스레드가 끝나며 세션을 닫는다.
+    /// - 미리보기 시각은 <see cref="Stopwatch"/> 의 단조 나노초로 잰다(Android 의 elapsedRealtimeNanos). 틱의 밀리초 시계(15.6ms 단위)로는
+    ///   250·275ms 창이 한 프레임씩 흔들린다.
     /// </summary>
     public sealed class RealtimeAiPipeline : IDisposable
     {
@@ -32,6 +41,18 @@ namespace SoundVisualizer.Ai
 
         /// <summary>Stop·Dispose 가 돌고 있는 추론을 기다리는 한도. UI 스레드를 오래 붙잡지 않는다(Android 는 메인 스레드 ANR).</summary>
         internal const int CloseWaitMs = 1000;
+
+        /// <summary>
+        /// 말소리 미리보기를 켤지(Android 의 BuildConfig.AI_SILERO_PREVIEW_ENABLED, v1.8.0 부터 기본 켬). 사용자 설정은 없다.
+        /// <see cref="Create"/> 의 기본값이다.
+        /// </summary>
+        public const bool SpeechPreviewEnabled = true;
+
+        /// <summary>정규 추론이 소리를 가져간 때부터 이 시간 안에(다음 틱 무렵까지) Silero 가 확인해야 미리보기를 받아들인다.</summary>
+        internal const long SpeechPreviewAcceptNs = 250_000_000L;
+
+        /// <summary>정규 추론이 소리를 가져간 때부터 이 시간이 지나면 미리보기가 사라진다. 다음 정규 결과가 오면 그 전에라도 사라진다.</summary>
+        internal const long SpeechPreviewExpiryNs = 275_000_000L;
 
         private const string Tag = nameof(RealtimeAiPipeline);
         private const long FailureLogIntervalMs = 2000;
@@ -49,6 +70,12 @@ namespace SoundVisualizer.Ai
         private readonly Func<long> _clock;
         private readonly Func<long, CancellationToken, bool> _waitForNextTick;
         private readonly bool _runScheduler;
+
+        // 말소리 미리보기. 스레드가 없으면(끔) 후보도 만들지 않고 화면용 결과는 늘 정규 결과다.
+        private readonly Func<long> _nanoClock;
+        private readonly SileroPreviewGate<SpeechParent> _speechGate = new();
+        private readonly SileroStreamWorker? _speechWorker;
+        private DisplayPreview? _displayPreview;
 
         // 추론을 한 번에 하나로 줄 세운다. 모델·후처리·작업 버퍼는 이 잠금 안에서만 쓴다.
         private readonly object _inferLock = new();
@@ -80,6 +107,11 @@ namespace SoundVisualizer.Ai
         /// <param name="clock">단조 밀리초. 테스트가 시각을 정한다. 기본은 <see cref="Environment.TickCount64"/>.</param>
         /// <param name="waitForNextTick">다음 틱까지 쉰다. 멈추라는 신호를 받으면 false. 테스트가 기다리지 않고 한 걸음씩 돌린다.</param>
         /// <param name="runScheduler">false 면 <see cref="Start"/> 가 상태만 비우고 스레드를 띄우지 않는다. 테스트가 <see cref="RunTickOnce"/> 를 직접 부른다.</param>
+        /// <param name="speechModel">
+        /// 말소리 미리보기의 Silero 를 만든다. 있으면 미리보기 스레드를 띄우고 그 스레드 안에서 한 번 부른다. null 이면 미리보기를 끈다
+        /// (이 생성자로 만드는 테스트의 기본). 앱은 <see cref="Create"/> 가 넣는다.
+        /// </param>
+        /// <param name="nanoClock">미리보기 시각을 재는 단조 나노초. 테스트가 시각을 정한다. 기본은 <see cref="Stopwatch"/>.</param>
         internal RealtimeAiPipeline(
             int captureSampleRate,
             int channels,
@@ -89,7 +121,9 @@ namespace SoundVisualizer.Ai
             Action<Exception>? tickFailed = null,
             Func<long>? clock = null,
             Func<long, CancellationToken, bool>? waitForNextTick = null,
-            bool runScheduler = true)
+            bool runScheduler = true,
+            Func<ISileroModel>? speechModel = null,
+            Func<long>? nanoClock = null)
         {
             ValidateArguments(captureSampleRate, channels, classes);
             ArgumentNullException.ThrowIfNull(model);
@@ -103,6 +137,12 @@ namespace SoundVisualizer.Ai
             _waitForNextTick = waitForNextTick ?? WaitForNextTick;
             _runScheduler = runScheduler;
             _captureScratch = new float[CaptureAudioMath.CaptureSamplesForOneYamnetWindow(captureSampleRate)];
+            _nanoClock = nanoClock ?? MonotonicNanoseconds;
+            // 스레드는 맨 끝에 띄운다. 앞에서 실패하면 띄운 스레드가 남지 않는다. 덩어리를 보는 것은 Start 뒤에 소리가 들어온 다음이다.
+            if (speechModel is not null)
+            {
+                _speechWorker = new SileroStreamWorker(_buffer, speechModel, ClearSpeechPreview, OnSpeechBlock, _nanoClock);
+            }
         }
 
         /// <summary>
@@ -119,6 +159,10 @@ namespace SoundVisualizer.Ai
         /// 예외를 던지면 안 된다. null 을 돌려주면 사용자 지정이 없는 것으로 본다.
         /// </param>
         /// <param name="tickFailed">틱 실패를 틱 스레드에서 받는다. null 이면 <see cref="AppLog.Warn"/> 으로 2초에 한 번까지 남긴다.</param>
+        /// <param name="speechPreview">
+        /// 말소리 미리보기를 켤지. 켜면 같은 폴더의 silero_vad.onnx 를 미리보기 스레드가 불러온다. 그 파일이 없거나 다르면 미리보기만 꺼지고
+        /// (<see cref="AppLog.Warn"/>) 정규 분류는 돈다.
+        /// </param>
         /// <exception cref="ArgumentOutOfRangeException">AI 가 받지 않는 캡처 레이트이거나 채널 수가 1 보다 작다.</exception>
         /// <exception cref="FileNotFoundException">모델 파일이 없다.</exception>
         /// <exception cref="InvalidDataException">모델 파일이 배포한 것과 다르거나 입출력이 YAMNet 계약과 다르다.</exception>
@@ -129,14 +173,17 @@ namespace SoundVisualizer.Ai
             string modelDirectory,
             YamnetClassMap classes,
             Func<IReadOnlyDictionary<string, string>>? mappingOverrides = null,
-            Action<Exception>? tickFailed = null)
+            Action<Exception>? tickFailed = null,
+            bool speechPreview = SpeechPreviewEnabled)
         {
             // 모델을 읽기 전에 거른다. 화면만 돌 레이트라면 15MB 를 해시하고 세션을 만들 까닭이 없다.
             ValidateArguments(captureSampleRate, channels, classes);
             var model = YamnetInference.Create(modelDirectory);
             try
             {
-                return new RealtimeAiPipeline(captureSampleRate, channels, model, classes, mappingOverrides, tickFailed);
+                string directory = Path.GetFullPath(modelDirectory);
+                return new RealtimeAiPipeline(captureSampleRate, channels, model, classes, mappingOverrides, tickFailed,
+                    speechModel: speechPreview ? () => SileroInference.Create(directory) : null);
             }
             catch
             {
@@ -164,6 +211,9 @@ namespace SoundVisualizer.Ai
             if (!Volatile.Read(ref _running) || IsClosed) return;
             // 섞기 전의 원래 채널로 무음을 판단하고, 게이트가 닫혀 있어도 늘 링에 남긴다. 다시 열릴 때 그 앞의 소리까지 한 창으로 본다.
             _gate.IngestInterleaved(interleaved, _clock());
+            // 링에 넣은 뒤 미리보기 스레드를 깨운다. Android 처럼 무음 게이트와 상관없이 소리가 들어오는 동안은 따라 읽는다.
+            // Windows 루프백은 아무것도 재생하지 않으면 버퍼를 보내지 않으므로 그때는 깨우지 않는다.
+            _speechWorker?.Signal();
         }
 
         /// <summary>
@@ -175,6 +225,30 @@ namespace SoundVisualizer.Ai
         {
             if (!Volatile.Read(ref _running) || IsClosed) return null;
             return _stage.LastClassification(CurrentOverrides());
+        }
+
+        /// <summary>
+        /// 화면과 개발자 HUD 가 읽는 결과(Android 의 lastDisplayClassification). 보통은 <see cref="LastClassification"/> 과 같다.
+        /// 말소리 미리보기를 받아들였고 정규 결과가 아직 그 부모(환경음) 그대로이며 사용자 지정이 없을 때만, 만료 전까지
+        /// 대화음 미리보기(<see cref="AiClassificationResult.SpeechPreview"/>)를 준다. 정규 위협음이나 다음 정규 결과, 사용자 지정이
+        /// 늘 이긴다. 진동·알림처럼 확정 판단이 필요한 곳은 쓰지 않는다(PC 에는 아직 없다). 어느 스레드에서나 부르고 잠그지 않는다.
+        /// </summary>
+        public AiClassificationResult? LastDisplayClassification()
+        {
+            var regular = LastClassification();
+            if (regular is null) return null;
+            var view = Volatile.Read(ref _displayPreview);
+            if (view is null) return regular;
+            if (_nanoClock() >= view.ExpiresNs)
+            {
+                Interlocked.CompareExchange(ref _displayPreview, null, view);
+                return regular;
+            }
+            return ReferenceEquals(view.Parent, regular) &&
+                regular.Coarse == SoundType.Ambient &&
+                CurrentOverrides().Count == 0
+                    ? view.Result
+                    : regular;
         }
 
         /// <summary>
@@ -228,7 +302,11 @@ namespace SoundVisualizer.Ai
         /// 추론을 멈춘다. 마지막 결과는 바로 숨기고(<see cref="LastClassification"/> 이 null), 다음 틱을 막고, 돌고 있는 틱이 끝나기를
         /// 최대 1초 기다린다. 다시 <see cref="Start"/> 할 수 있다. 여러 번 불러도 된다.
         /// </summary>
-        public void Stop() => StopScheduler(Environment.TickCount64 + CloseWaitMs);
+        public void Stop()
+        {
+            StopScheduler(Environment.TickCount64 + CloseWaitMs);
+            ClearSpeechPreview();
+        }
 
         /// <summary>
         /// 멈추고 모델을 닫는다. 여러 번 불러도 된다. 닫은 뒤에는 추론하지 않고, <see cref="Ingest"/> 는 버리고,
@@ -239,7 +317,10 @@ namespace SoundVisualizer.Ai
         {
             if (Interlocked.Exchange(ref _closed, 1) != 0) return;
             long deadlineMs = Environment.TickCount64 + CloseWaitMs;
+            // 미리보기 스레드에 먼저 알려 정규 추론을 기다리는 동안 함께 멈추게 한다. 끝나기를 기다리는 것은 맨 뒤에서 한다.
+            _speechWorker?.RequestClose();
             StopScheduler(deadlineMs);
+            ClearSpeechPreview();
 
             // 멈추기는 다음 틱만 막는다. 이미 모델 안에 들어간 추론이 있으면 끝나기를 기다린 뒤에 세션을 닫아야 해제한 메모리를 쓰지 않는다.
             if (Monitor.TryEnter(_inferLock, RemainingMs(deadlineMs)))
@@ -256,6 +337,12 @@ namespace SoundVisualizer.Ai
             else
             {
                 AppLog.Warn(Tag, "Inference still running after 1 s; the running tick releases the YAMNet session when it finishes");
+            }
+
+            // Silero 세션은 미리보기 스레드가 끝나며 닫는다. 남은 시간 안에 끝나지 않으면 기다리지 않는다(그 스레드가 덩어리를 마치고 닫는다).
+            if (_speechWorker is not null && !_speechWorker.Join(RemainingMs(deadlineMs)))
+            {
+                AppLog.Warn(Tag, "Silero preview still running after 1 s; it releases its session when the current block finishes");
             }
         }
 
@@ -314,15 +401,21 @@ namespace SoundVisualizer.Ai
         /// <summary>닫기 경합 테스트가 틱을 링 검사에 세워 두는 데 쓴다.</summary>
         internal AiAudioBuffer AudioBufferForTest => _buffer;
 
+        /// <summary>말소리 미리보기 스레드. 끄면 null.</summary>
+        internal SileroStreamWorker? SpeechWorkerForTest => _speechWorker;
+
         private (AiTickOutcome Outcome, Exception? Failure) RunTickLocked(long nowMs)
         {
+            // 정규 추론이 시작되면 미리보기를 새로 받아들이지 않는다. 이미 받아들인 것은 만료나 다음 정규 결과까지 둔다(Android 와 같다).
+            _speechGate.RegularStarted();
             // Dispose 가 잠금을 잡기 직전에 위의 검사를 지났을 수 있으므로 잠금 안에서 다시 본다.
             if (IsClosed) return (AiTickOutcome.Closed, null);
 
             try
             {
                 // 무음이라 건너뛰는 틱에도 먼저 반영한다. 이전 매핑에서 확정한 위협음이 새 매핑으로 넘어가지 않게 한다.
-                _stage.UpdateMapping(CurrentOverrides());
+                // 매핑이 바뀌어 마지막 결과를 지웠으면 그 결과의 미리보기도 지운다.
+                if (_stage.UpdateMapping(CurrentOverrides())) ClearSpeechPreview();
             }
             catch (Exception ex)
             {
@@ -353,6 +446,8 @@ namespace SoundVisualizer.Ai
         private void InferLocked()
         {
             Interlocked.Increment(ref _inferenceExecutions);
+            // 미리보기 창(250·275ms)은 정규 추론이 소리를 가져가기 직전부터 잰다(Android 의 snapshotBootNs).
+            long snapshotNs = _speechWorker is null ? 0L : _nanoClock();
             long started = Stopwatch.GetTimestamp();
             _buffer.CopyTailRightPadded(_captureScratch);
             CaptureAudioMath.ResampleMonoFloatTo16kCustom(_captureScratch, _buffer.SampleRate, _mono16k);
@@ -360,12 +455,65 @@ namespace SoundVisualizer.Ai
             long preprocessed = Stopwatch.GetTimestamp();
             _model.Infer(_logMel, _logits, _probabilities);
             long inferred = Stopwatch.GetTimestamp();
-            _stage.Process(
+            var result = _stage.Process(
                 _probabilities,
                 started,
                 preprocessMs: Stopwatch.GetElapsedTime(started, preprocessed).TotalMilliseconds,
                 yamnetMs: Stopwatch.GetElapsedTime(preprocessed, inferred).TotalMilliseconds);
+            OnRegularResultPublished(result, snapshotNs);
         }
+
+        /// <summary>
+        /// 새 정규 결과를 게시한 직후(추론 잠금 안). 앞 결과의 미리보기와 후보를 버리고, 이번 프레임이 첫 대화음 후보면 새 후보를 건다.
+        /// 후보는 지금까지 링에 들어온 소리 뒤의 새 소리만 본다. Android 는 결과를 저장하기 전에 비우지만, 여기서는 저장한 뒤에 비운다.
+        /// 미리보기는 부모가 지금 정규 결과일 때만 보이므로(<see cref="LastDisplayClassification"/>) 그 사이에도 옛 미리보기가 보이지 않고,
+        /// 저장하기 전에 비우면 그 사이 한 프레임 동안 미리보기 대신 부모(환경음)가 보일 수 있다.
+        /// </summary>
+        private void OnRegularResultPublished(AiClassificationResult result, long snapshotNs)
+        {
+            if (_speechWorker is null) return;
+            SileroPreviewGate<SpeechParent>.Candidate? candidate = null;
+            if (_stage.SpeechOnset is { } onset)
+            {
+                var cursor = _buffer.Cursor();
+                candidate = new SileroPreviewGate<SpeechParent>.Candidate(
+                    new SpeechParent(result, onset.Display, onset.Confidence),
+                    FreshAfterFrame: cursor.Frames,
+                    AcceptBeforeNs: snapshotNs + SpeechPreviewAcceptNs,
+                    ExpiresNs: snapshotNs + SpeechPreviewExpiryNs,
+                    Generation: cursor.Generation);
+            }
+            _speechGate.Regular(candidate);
+            Volatile.Write(ref _displayPreview, null);
+        }
+
+        /// <summary>
+        /// Silero 덩어리 하나의 결과(미리보기 스레드). 받아들였고, 그 사이 새 정규 결과나 사용자 지정이 생기지 않았고, 받아들임 마감 전이면
+        /// 화면용 미리보기를 게시한다.
+        /// </summary>
+        private void OnSpeechBlock(long generation, long startFrame, long endFrame, float probability, long nowNs)
+        {
+            var accepted = _speechGate.Block(generation, startFrame, endFrame, probability, nowNs);
+            if (accepted is null || IsClosed) return;
+            var parent = accepted.Parent;
+            if (!ReferenceEquals(LastClassification(), parent.Result) || CurrentOverrides().Count != 0) return;
+            var preview = parent.Result.AsSpeechPreview(parent.Display, parent.Confidence, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            if (_nanoClock() < accepted.AcceptBeforeNs)
+            {
+                Volatile.Write(ref _displayPreview, new DisplayPreview(parent.Result, preview, accepted.ExpiresNs));
+            }
+        }
+
+        /// <summary>후보·받아들인 것·게시한 미리보기를 모두 버린다. 멈춤·초기화·매핑 변경·닫기, 미리보기 스레드가 밀린 소리를 버릴 때.</summary>
+        private void ClearSpeechPreview()
+        {
+            _speechGate.Regular(null);
+            Volatile.Write(ref _displayPreview, null);
+        }
+
+        private static readonly double NanosecondsPerTimestampTick = 1_000_000_000.0 / Stopwatch.Frequency;
+
+        private static long MonotonicNanoseconds() => (long)(Stopwatch.GetTimestamp() * NanosecondsPerTimestampTick);
 
         private void RunScheduler(CancellationToken stop)
         {
@@ -430,6 +578,7 @@ namespace SoundVisualizer.Ai
             _buffer.Reset();
             _gate.Reset();
             _stage.Reset();
+            ClearSpeechPreview();
             Interlocked.Exchange(ref _inferenceExecutions, 0);
             Interlocked.Exchange(ref _inferenceCompletions, 0);
             Interlocked.Exchange(ref _silenceSkippedTicks, 0);
@@ -491,6 +640,12 @@ namespace SoundVisualizer.Ai
 
         /// <summary>추론 횟수. Executed 는 시작한 추론, Completed 는 결과를 게시하고 끝난 추론이다.</summary>
         internal readonly record struct InferenceStats(long Executed, long Completed, long SkippedForSilence);
+
+        /// <summary>미리보기 후보의 부모: 그 정규 결과(환경음)와, 받아들이면 보일 대화음 이름·확신도.</summary>
+        private sealed record SpeechParent(AiClassificationResult Result, string Display, float Confidence);
+
+        /// <summary>게시한 미리보기. <paramref name="Parent"/> 가 지금 정규 결과일 때만, <paramref name="ExpiresNs"/> 전까지 보인다.</summary>
+        private sealed record DisplayPreview(AiClassificationResult Parent, AiClassificationResult Result, long ExpiresNs);
     }
 
     /// <summary>틱 한 번이 어떻게 끝났는지. 테스트와 진단용이다.</summary>

@@ -82,6 +82,49 @@ internal sealed class FakeYamnetModel : IYamnetModel
     }
 }
 
+/// <summary>
+/// 말소리 미리보기의 Silero 자리에 끼우는 가짜. 덩어리마다 <see cref="Probability"/> 를 돌려주고, 상태 비우기·닫기 횟수와 닫힌 뒤에
+/// 쓰였는지를 기록한다. 미리보기 스레드 하나만 부르지만, 테스트 스레드가 값을 읽으므로 원자적으로 센다.
+/// </summary>
+internal sealed class FakeSileroModel : ISileroModel
+{
+    private int _scoreCalls;
+    private int _resetCalls;
+    private int _disposeCalls;
+    private int _usedAfterDispose;
+
+    /// <summary>몇 번째 덩어리인지(1부터)로 확률을 정한다. 기본은 늘 1(말소리).</summary>
+    public Func<int, float> Probability { get; set; } = static _ => 1f;
+
+    /// <summary>덩어리를 볼 때마다 부른다. 예외를 던지면 미리보기 스레드가 실패한다.</summary>
+    public Action<int>? OnScore { get; set; }
+
+    public int ScoreCalls => Volatile.Read(ref _scoreCalls);
+
+    public int ResetCalls => Volatile.Read(ref _resetCalls);
+
+    public int DisposeCalls => Volatile.Read(ref _disposeCalls);
+
+    public bool UsedAfterDispose => Volatile.Read(ref _usedAfterDispose) != 0;
+
+    public void Reset()
+    {
+        if (DisposeCalls != 0) Interlocked.Exchange(ref _usedAfterDispose, 1);
+        Interlocked.Increment(ref _resetCalls);
+    }
+
+    public float Score(ReadOnlySpan<float> block)
+    {
+        if (DisposeCalls != 0) Interlocked.Exchange(ref _usedAfterDispose, 1);
+        Assert.Equal(SileroInference.BlockSize, block.Length);
+        int call = Interlocked.Increment(ref _scoreCalls);
+        OnScore?.Invoke(call);
+        return Probability(call);
+    }
+
+    public void Dispose() => Interlocked.Increment(ref _disposeCalls);
+}
+
 /// <summary>파이프라인 테스트에 넣는 소리.</summary>
 internal static class PipelineTestAudio
 {

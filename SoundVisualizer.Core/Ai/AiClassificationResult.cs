@@ -53,5 +53,33 @@ namespace SoundVisualizer.Ai
         /// (<see cref="AiClassificationStage.LastClassification"/>).
         /// </summary>
         internal FrozenDictionary<string, string> MappingInputs { get; init; } = FrozenDictionary<string, string>.Empty;
+
+        /// <summary>
+        /// 말소리 미리보기로 한 박자 먼저 보이는 화면 전용 결과인지(Android #422). 확정 결과(<see cref="RealtimeAiPipeline.LastClassification"/>)는
+        /// 늘 false 이고, 화면용 <see cref="RealtimeAiPipeline.LastDisplayClassification"/> 만 true 인 결과를 줄 수 있다.
+        /// </summary>
+        public bool SpeechPreview { get; init; }
+
+        /// <summary>
+        /// 이 확정 결과(환경음)를 부모로 한 미리보기(Android 의 parent.copy(coarse = "speech", ..., speechPreview = true)). 종류는 대화음,
+        /// 이름과 확신도는 부모 프레임의 대화음 후보 값, 시각은 미리보기를 만든 때다. 상위 5개·소요시간·매핑은 부모 그대로 둔다.
+        /// </summary>
+        internal AiClassificationResult AsSpeechPreview(string display, float confidence, long timestampMs) => new()
+        {
+            Coarse = SoundType.Speech,
+            Display = display,
+            Confidence = confidence,
+            Top5 = Top5,
+            DangerCuePromoted = DangerCuePromoted,
+            MeetsThreshold = MeetsThreshold,
+            TimestampMs = timestampMs,
+            PreprocessMs = PreprocessMs,
+            YamnetMs = YamnetMs,
+            TotalMs = TotalMs,
+            MappingOverrideCount = MappingOverrideCount,
+            MappingSignature = MappingSignature,
+            MappingInputs = MappingInputs,
+            SpeechPreview = true,
+        };
     }
 }
