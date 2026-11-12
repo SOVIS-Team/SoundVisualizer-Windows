@@ -15,6 +15,7 @@
 [![C#](https://img.shields.io/badge/C%23-239120?style=for-the-badge&logo=c-sharp&logoColor=white)](https://docs.microsoft.com/en-us/dotnet/csharp/)
 [![.NET](https://img.shields.io/badge/.NET-512BD4?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/)
 [![ONNX](https://img.shields.io/badge/ONNX-005CED?style=for-the-badge&logo=onnx&logoColor=white)](https://onnxruntime.ai/)
+[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/amophi/badge.svg)](https://hub.xerj.org/contributors/amophi)
 
 **Real-Time Audio Visualization & AI Sound Analysis Overlay Engine**
 
@@ -26,6 +27,8 @@
 Going beyond simple waveform rendering, it integrates an AI sound classifier powered by **YAMNet** and **ONNX Runtime** to instantly identify the type of sound playing (ambient, human sounds, danger) and provide adaptive visual feedback.
 
 > 📱 There is also an Android version: [SoundVisualizer for Android](https://github.com/SOVIS-Team/SoundVisualizer-Android).
+
+> 🔎 Listed on the [XERJ Corpus Hub](https://hub.xerj.org/corpus/sovis-team--soundvisualizer-windows), an open code index that AI coding agents search before they write code. Our work on making the color picker readable by screen readers is there as a worked example.
 
 ---
 

@@ -15,6 +15,7 @@
 [![C#](https://img.shields.io/badge/C%23-239120?style=for-the-badge&logo=c-sharp&logoColor=white)](https://docs.microsoft.com/en-us/dotnet/csharp/)
 [![.NET](https://img.shields.io/badge/.NET-512BD4?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/)
 [![ONNX](https://img.shields.io/badge/ONNX-005CED?style=for-the-badge&logo=onnx&logoColor=white)](https://onnxruntime.ai/)
+[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/amophi/badge.svg)](https://hub.xerj.org/contributors/amophi)
 
 **실시간 오디오 시각화 및 AI 기반 사운드 분석 오버레이**
 
@@ -26,6 +27,8 @@
 단순한 파형 시각화를 넘어, **YAMNet**과 **ONNX Runtime** 기반의 AI 사운드 분류기를 내장하여 현재 재생 중인 소리의 종류(환경음, 사람 소리, 위협음)를 실시간으로 인지하고 피드백을 제공합니다.
 
 > 📱 안드로이드 버전도 있습니다: [SoundVisualizer for Android](https://github.com/SOVIS-Team/SoundVisualizer-Android)
+
+> 🔎 AI 코딩 에이전트가 코드를 쓰기 전에 찾아보는 공개 코드 색인 [XERJ Corpus Hub](https://hub.xerj.org/corpus/sovis-team--soundvisualizer-windows)에 실렸습니다. 색 선택 창을 화면 읽어주기로 쓸 수 있게 만든 작업이 참고 예시로 올라 있습니다.
 
 ---
 
